@@ -1,4 +1,4 @@
-25665157412688906
+25670481161964406
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -67864,6 +67864,13 @@ Yellow 5381 Series LED
 0
 2
 2
+Library
+matrix_led
+Through hole IDC header, 2x05, 2.54mm pitch, DIN 41651 / IEC 60603-13, double rows, 9.5mm latches, mounting holes, https://docs.google.com/spreadsheets/d/16SsEcesNF15N3Lb4niX7dcUr-NY5_MFPQhobNuNppn4/edit#gid=0
+Through hole vertical IDC header THT 2x05 2.54mm double row
+0
+20
+20
 Module
 A20_OLINUXINO_LIME2
 A20 Olinuxino LIME2, 1.2GHz, 512-1024MB RAM, Micro-SD, NAND or eMMC, 1000Mbit Ethernet
@@ -102767,6 +102774,13 @@ Integrated Circuit
 8
 8
 samacsys
+NJM7805SDL1TE1
+TO-252-3-L1_2022
+Integrated Circuit
+0
+3
+3
+samacsys
 RK09712200HA
 RK09712200HA-2
 Variable Resistor
@@ -102885,6 +102899,13 @@ Inductor
 0
 2
 2
+samacsys
+TO-252-3-L1
+TO-252-3-L1
+Integrated Circuit
+0
+3
+3
 samacsys
 TO254P570X1700X1780-3P
 3-SIP Module

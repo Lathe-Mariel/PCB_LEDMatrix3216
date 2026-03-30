@@ -27,7 +27,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Library:matrix_led"
 			(at 0 10.16 0)
 			(effects
 				(font
