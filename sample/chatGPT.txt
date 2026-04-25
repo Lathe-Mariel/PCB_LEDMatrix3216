@@ -1,0 +1,54 @@
+FPGAのデザイン作ってください．
+# マトリクスLEDに文字をスクロール表示
+FPGAボードにPmodで接続されたマトリクスLEDをダイナミックドライブする．
+スクロール表示する文字は，「Write once, run anywhere」
+
+# ハードウェア
+## FPGAボード
+Tang Primer 25K（Sipeed）
+
+## LEDマトリクス
+16行×32桁
+
+## システムクロック
+50MHz
+
+## インターフェース
+Pmodポート1
+
+### ピン配置
+SIN1, シリアルデータ1（行データ選択，正論理）
+SIN2，シリアルデータ2（桁データ，31～16，正論理）
+SIN3，シリアルデータ3（桁データ，15～0，正論理）
+LATCH，データラッチ（正論理，1でデータラッチ）
+LED_CLK，データ通信用クロック
+STROBE_, 負論理
+
+### 物理制約ファイル
+物理制約ファイルの内容は次の通り
+
+IO_LOC "SIN2"   A10;
+IO_PORT "SIN2"   PULL_MODE=UP IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "SIN3" E10;
+IO_PORT "SIN3" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+//IO_LOC "" L11;
+//IO_PORT "" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+//IO_LOC ""  K5;
+//IO_PORT ""  PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "SIN1" A11;
+IO_PORT "SIN1" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "LATCH"   E11;
+IO_PORT "LATCH"   PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "LED_CLK" K11;
+IO_PORT "LED_CLK" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "STROBE_" L5;
+IO_PORT "STROBE_" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+
+IO_LOC "USER_KEY" H11;
+IO_PORT "USER_KEY" PULL_MODE=NONE DRIVE=OFF BANK_VCCIO=3.3;
+IO_LOC "clk" E2;
+IO_PORT "clk" PULL_MODE=NONE DRIVE=OFF BANK_VCCIO=3.3;
+
+# 仕様
+各ドットの明るさは4諧調で制御できるように実装する
+100msごとに1ドットぶん左スクロールする
