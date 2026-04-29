@@ -1,0 +1,81 @@
+FPGAのRTL設計をしてVerilogコードを生成してください．
+アプリケーションは，マトリクスLEDの画面を使って，テトリスを作ってください．
+PLLは私がIPを生成するので，仕様だけ明示してください．
+
+# FPGAボードの仕様
+Tang Primer 25K(sipeed)
+## システムクロック
+50MHz
+
+## 物理制約ファイルの内容
+
+IO_LOC "SIN2"   A10;
+IO_PORT "SIN2"   PULL_MODE=UP IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "SIN3" E10;
+IO_PORT "SIN3" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+//IO_LOC "" L11;
+//IO_PORT "" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+//IO_LOC ""  K5;
+//IO_PORT ""  PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "SIN1" A11;
+IO_PORT "SIN1" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "LATCH"   E11;
+IO_PORT "LATCH"   PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "LED_CLK" K11;
+IO_PORT "LED_CLK" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "STROBE_" L5;
+IO_PORT "STROBE_" PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+
+IO_LOC "USER_KEY" H11;
+IO_PORT "USER_KEY" PULL_MODE=DOWN DRIVE=OFF BANK_VCCIO=3.3;
+IO_LOC "USER_KEY2" H10;
+IO_PORT "USER_KEY2" PULL_MODE=DOWN DRIVE=OFF BANK_VCCIO=3.3;
+IO_LOC "clk" E2;
+IO_PORT "clk" PULL_MODE=NONE DRIVE=OFF BANK_VCCIO=3.3;
+
+
+# マトリクスLEDの仕様
+## インターフェース
+Pmodポート1
+
+### ピン配置
+SIN1, シリアルデータ1（行データ選択，正論理）
+SIN2，シリアルデータ2（桁データ，15～0，正論理）
+SIN3，シリアルデータ3（桁データ，31～16，正論理）
+LATCH，データラッチ（正論理，1でデータラッチ）
+LED_CLK，データ通信用クロック
+STROBE_, 負論理
+
+- Vertical column order is mapped as `SIN3[15:0]`, `SIN2[15:0]`, `SIN3[31:16]`, `SIN2[31:16]`.
+- `LATCH` captures the shift registers after 32 serial clocks.
+- `STROBE_` is active low and is used as the display enable during the row hold time.
+
+
+# 画面サイズ
+## 全体
+横16ドット
+縦64ドット
+画面は縦長として使う．これを縦方向と呼ぶ．
+## ブロック領域
+画面左側　横方向8ドット
+縦32ドット
+## 次ブロック予告
+画面右側　横方向4ドット（画面上側の領域を使う）
+## 点数表示
+画面右側　横方向5ドット（画面下側の領域を使う）
+点数表示は5桁．文字は横方向にする
+
+# テトリスの仕様
+## キー入力
+今回は実装しないが，インターフェースとして，次のレジスタを用意する．
+・左キー
+・右キー
+・下キー
+・Aボタン（右回転）
+・Bボタン（左回転）
+
+## 点数計算
+同時に1行消した：1点追加
+同時に2行消した：4点追加
+同時に3行消した：16点追加
+同時に4行けした：256点追加
