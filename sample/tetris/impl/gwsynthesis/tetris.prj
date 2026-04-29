@@ -5,6 +5,7 @@
     <Device id="GW5A-25A" package="MBGA121N" speed="1" partNumber="GW5A-LV25MG121NES"/>
     <FileList>
         <File path="H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v" type="verilog"/>
+        <File path="H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v" type="verilog"/>
     </FileList>
     <OptionList>
         <Option type="disable_insert_pad" value="0"/>

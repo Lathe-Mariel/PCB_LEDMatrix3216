@@ -7,16 +7,74 @@ module matrix_led_top (
     output reg  SIN3,
     output reg  LATCH,
     output reg  LED_CLK,
-    output reg  STROBE_
+    output reg  STROBE_,
+    output wire joystick_cs2,
+    output wire joystick_mosi2,
+    output wire joystick_clk2,
+    output wire joystick_cs,
+    output wire joystick_mosi,
+    input wire joystick_miso,
+    input wire joystick_miso2,
+    output wire joystick_clk,
+    output wire[7:0] led
 );
 
-assign KEY_RIGHT = USER_KEY2;
+//assign KEY_LEFT = USER_KEY2;
+assign KEY_LEFT = ~joy_rx[0][7];
+assign KEY_RIGHT = ~joy_rx[0][5];
+assign KEY_DOWN = ~joy_rx[0][6];
+assign BTN_A = ~joy_rx[1][4];
+assign BTN_B = ~joy_rx[1][7];
+assign reset_key = ~joy_rx[0][3];
+//STA 0,3
+//〇 1,5
+//△ 1,4
+//X 1,6
+//□ 1,7
+//→ 0,5
+//← 0,7
+//↓ 0,7 - 0,6
+//sel 0,1
+//R2 1,1
+//R1 1,3
+//L1 1,2
+//l2 0,0
+assign led[0] = ~joy_rx[0][5];
+assign led[1] = ~joy_rx[0][7];
 
     wire KEY_LEFT;
     wire KEY_RIGHT;
     wire KEY_DOWN;
     wire BTN_A;
     wire BTN_B;
+
+    wire reset_key;
+
+reg sclk;                   // controller main clock at 250Khz
+localparam  SCLK_DELAY = 200;
+reg [$clog2(SCLK_DELAY)-1:0] sclk_cnt;         
+
+// Generate sclk
+always @(posedge clk) begin
+    sclk_cnt <= sclk_cnt + 1;
+    if (sclk_cnt == SCLK_DELAY-1) begin
+        sclk = ~sclk;
+        sclk_cnt <= 0;
+    end
+end
+
+dualshock_controller controller (
+    .I_CLK250K(sclk), .I_RSTn(1'b1),
+    .O_psCLK(joystick_clk), .O_psSEL(joystick_cs), .O_psTXD(joystick_mosi),
+    .I_psRXD(joystick_miso),
+    .O_RXD_1(joy_rx[0]), .O_RXD_2(joy_rx[1]), .O_RXD_3(),
+    .O_RXD_4(), .O_RXD_5(), .O_RXD_6(),
+    // config=1, mode=1(analog), mode_en=1
+    .I_CONF_SW(1'b0), .I_MODE_SW(1'b1), .I_MODE_EN(1'b0),
+    .I_VIB_SW(2'b00), .I_VIB_DAT(8'hff)     // no vibration
+);
+
+  wire [7:0] joy_rx[0:1], joy_rx2[0:1];     // 6 RX bytes for all button/axis state
 
     localparam integer CLK_HZ            = 50_000_000;
     localparam integer DISPLAY_X         = 16;
@@ -563,7 +621,7 @@ assign KEY_RIGHT = USER_KEY2;
     endfunction
 
     always @(posedge clk) begin
-        if (USER_KEY) begin
+        if (reset_key) begin
             state             <= STATE_LOAD;
             plane_sel         <= 1'b0;
             scan_row          <= 4'd0;
@@ -713,9 +771,10 @@ assign KEY_RIGHT = USER_KEY2;
 
             if ((control_pulse || gravity_pulse) && !game_over) begin
                 if (line_clear_pending) begin
-                    // Clear completed rows without moving any landed blocks.
-                    compact_board_bits = board_bits;
+                    // Clear completed rows and drop all rows above them.
+                    compact_board_bits = 256'd0;
                     clear_count = 0;
+                    write_row = FIELD_H - 1;
                     for (read_row = FIELD_H - 1; read_row >= 0; read_row = read_row - 1) begin
                         row_full = 1;
                         for (cell_x = 0; cell_x < FIELD_W; cell_x = cell_x + 1) begin
@@ -725,9 +784,12 @@ assign KEY_RIGHT = USER_KEY2;
                         end
                         if (row_full != 0) begin
                             clear_count = clear_count + 1;
+                        end else begin
                             for (cell_x = 0; cell_x < FIELD_W; cell_x = cell_x + 1) begin
-                                compact_board_bits[(read_row * FIELD_W) + cell_x] = 1'b0;
+                                compact_board_bits[(write_row * FIELD_W) + cell_x] =
+                                    board_bits[(read_row * FIELD_W) + cell_x];
                             end
+                            write_row = write_row - 1;
                         end
                     end
 
@@ -759,29 +821,41 @@ assign KEY_RIGHT = USER_KEY2;
                 work_rot = cur_rot;
                 locked_now = 0;
 
-                if (rot_r_press) begin
-                    if (position_valid_on_board(board_bits, cur_piece, (work_rot + 1) & 2'b11, work_x, work_y)) begin
-                        work_rot = (work_rot + 1) & 2'b11;
+                if (piece_should_lock(board_bits, cur_piece, cur_rot, cur_x, cur_y)) begin
+                    locked_now = 1;
+                end else begin
+                    if (rot_r_press) begin
+                        if (position_valid_on_board(board_bits, cur_piece, (work_rot + 1) & 2'b11, work_x, work_y)) begin
+                            work_rot = (work_rot + 1) & 2'b11;
+                        end
                     end
-                end
-                if (rot_l_press) begin
-                    if (position_valid_on_board(board_bits, cur_piece, (work_rot + 3) & 2'b11, work_x, work_y)) begin
-                        work_rot = (work_rot + 3) & 2'b11;
+                    if (rot_l_press) begin
+                        if (position_valid_on_board(board_bits, cur_piece, (work_rot + 3) & 2'b11, work_x, work_y)) begin
+                            work_rot = (work_rot + 3) & 2'b11;
+                        end
                     end
-                end
-                if (left_press) begin
-                    if (position_valid_on_board(board_bits, cur_piece, work_rot, work_x - 1, work_y)) begin
-                        work_x = work_x - 1;
+                    if (left_press) begin
+                        if (position_valid_on_board(board_bits, cur_piece, work_rot, work_x - 1, work_y)) begin
+                            work_x = work_x - 1;
+                        end
                     end
-                end
-                if (right_press) begin
-                    if (position_valid_on_board(board_bits, cur_piece, work_rot, work_x + 1, work_y)) begin
-                        work_x = work_x + 1;
+                    if (right_press) begin
+                        if (position_valid_on_board(board_bits, cur_piece, work_rot, work_x + 1, work_y)) begin
+                            work_x = work_x + 1;
+                        end
+                    end
+
+                    if (piece_should_lock(board_bits, cur_piece, work_rot[1:0], work_x, work_y)) begin
+                        locked_now = 1;
+                    end else if (drop_step) begin
+                        if (position_valid_on_board(board_bits, cur_piece, work_rot[1:0], work_x, work_y + 1)) begin
+                            work_y = work_y + 1;
+                        end
                     end
                 end
 
-                if (drop_step && piece_should_lock(board_bits, cur_piece, work_rot[1:0], work_x, work_y)) begin
-                        // Lock the currently displayed piece exactly as-is.
+                if (locked_now != 0) begin
+                        // Lock the tetromino at the first supported position.
                         temp_board_bits = board_bits;
                         for (cell_y = 0; cell_y < 4; cell_y = cell_y + 1) begin
                             for (cell_x = 0; cell_x < 4; cell_x = cell_x + 1) begin
@@ -818,12 +892,6 @@ assign KEY_RIGHT = USER_KEY2;
                             end
                         end
                         locked_now = 1;
-                end else begin
-                    if (drop_step) begin
-                        if (position_valid_on_board(board_bits, cur_piece, work_rot[1:0], work_x, work_y + 1)) begin
-                            work_y = work_y + 1;
-                        end
-                    end
                 end
 
                 if (locked_now == 0) begin

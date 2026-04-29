@@ -1,2 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Module name="matrix_led_top" Register="473" Alu="296" Lut="4543" T_Register="473(473)" T_Alu="296(296)" T_Lut="4543(4543)"/>
+<Module name="matrix_led_top" Register="496" Alu="694" Lut="13229" T_Register="564(496)" T_Alu="705(694)" T_Lut="13330(13229)">
+ <SubModule name="controller" Register="7" Lut="7" T_Register="68(7)" T_Alu="11(0)" T_Lut="101(7)">
+  <SubModule name="pls" Register="22" Alu="11" Lut="27" T_Register="22(22)" T_Alu="11(11)" T_Lut="27(27)"/>
+  <SubModule name="cmd" Register="14" Lut="55" T_Register="14(14)" T_Lut="55(55)"/>
+  <SubModule name="txd" Register="9" Lut="12" T_Register="9(9)" T_Lut="12(12)"/>
+  <SubModule name="rxd" Register="16" T_Register="16(16)"/>
+ </SubModule>
+</Module>
