@@ -12,19 +12,19 @@
 // -------------------------------------------------------------------
 
 // Timer size: 12 for synthesis, 18 for simulation
-const TIMER_SIZ: u32 = 12;
 
 // ---------------------------------------------------------------------------
 // ps_rxd : Serial receive shift register
 // ---------------------------------------------------------------------------
 module ps_rxd (
-    i_clk   : input  clock,
-    i_rstn  : input  reset,
-    i_wt    : input  logic,
-    i_ps_rxd: input  logic,
-    o_rxd_dat: output logic<8>,
+    i_clk   : input  'a clock,
+    i_rstn  : input  'a reset,
+    i_wt    : input  'a clock,
+    i_ps_rxd: input  'a logic,
+    o_rxd_dat: output 'a logic<8>,
 ) {
     var sp: logic<8>;
+
 
     // Shift register: shift in MSB from i_ps_rxd on rising edge of i_clk
     always_ff (i_clk, i_rstn) {
@@ -82,6 +82,8 @@ module ps_txd (
 // ps_pls_gan : Pulse / timing generator
 // ---------------------------------------------------------------------------
 module ps_pls_gan #(
+    const TIMER_SIZ: u32 = 12,
+
     param TIMER_SIZE: u32 = TIMER_SIZ,
 ) (
     i_clk          : input  clock,
@@ -109,7 +111,7 @@ module ps_pls_gan #(
         if_reset {
             timer = '0;
         } else {
-            timer = timer + 1 as logic<TIMER_SIZE>;
+            timer = timer + 1'b1;
         }
     }
 
@@ -155,9 +157,9 @@ module ps_pls_gan #(
         } else {
             if o_scan_seq_pls == 1'b1 {
                 ps_sel = 1'b0;
-            } else if i_type == 1'b0 && timer == TIMER_SIZE'(158) {
+            } else if i_type == 1'b0 && timer == 158 {
                 ps_sel = 1'b1;
-            } else if i_type == 1'b1 && timer == TIMER_SIZE'(286) {
+            } else if i_type == 1'b1 && timer == 286 {
                 ps_sel = 1'b1;
             }
         }
@@ -334,7 +336,7 @@ module txd_commnd (
                             4'd1: o_txd_dat = 8'h45;
                             4'd2: {
                                 o_txd_dat = 8'h00;
-                                conf_done = if i_rxd_dat == 8'hF3 { 1'b0 } else { 1'b1 };
+                                conf_done = if i_rxd_dat == 8'hF3 ? 1'b0 : 1'b1 ;
                             }
                             4'd4: {
                                 o_txd_dat = 8'h00;
@@ -362,8 +364,8 @@ module txd_commnd (
                         case i_byte_cnt {
                             4'd0: o_txd_dat = 8'h01;
                             4'd1: o_txd_dat = 8'h44;
-                            4'd3: o_txd_dat = if pad_mode[0] { 8'h01 } else { 8'h00 };
-                            4'd4: o_txd_dat = if pad_mode[1] { 8'h03 } else { 8'h00 };
+                            4'd3: o_txd_dat = if pad_mode[0] ? 8'h01 : 8'h00 ;
+                            4'd4: o_txd_dat = if pad_mode[1] ? 8'h03 : 8'h00 ;
                             4'd8: {
                                 o_txd_dat  = 8'h00;
                                 conf_state = 3'd3;
@@ -412,7 +414,7 @@ module txd_commnd (
 module dualshock_controller (
     i_clk250k : input  clock,
     i_rstn    : input  reset,
-    o_ps_clk  : output logic,
+    o_ps_clk  : output '_ clock,
     o_ps_sel  : output logic,
     o_ps_txd  : output logic,
     i_ps_rxd  : input  logic,
@@ -429,12 +431,12 @@ module dualshock_controller (
     i_vib_dat : input  logic<8>,
 ) {
     // Internal wires
-    var w_scan_seq_pls: logic;
+    var w_scan_seq_pls: '_ clock;
     var w_type        : logic;
     var w_byte_cnt    : logic<4>;
-    var w_rxwt        : logic;
+    var w_rxwt        : '_ clock;
     var w_txwt        : logic;
-    var w_txset       : logic;
+    var w_txset       : '_ clock;
     var w_txen        : logic;
     var w_txd_dat     : logic<8>;
     var w_rxd_dat     : logic<8>;

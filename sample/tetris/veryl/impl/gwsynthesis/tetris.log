@@ -1,49 +1,27 @@
 GowinSynthesis start
 Running parser ...
-Analyzing Verilog file 'H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v'
-Undeclared symbol 'KEY_LEFT', assumed default net type 'wire'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":23)
-Undeclared symbol 'KEY_RIGHT', assumed default net type 'wire'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":24)
-Undeclared symbol 'KEY_DOWN', assumed default net type 'wire'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":25)
-Undeclared symbol 'BTN_A', assumed default net type 'wire'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":26)
-Undeclared symbol 'BTN_B', assumed default net type 'wire'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":27)
-Undeclared symbol 'reset_key', assumed default net type 'wire'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":28)
-WARN  (EX3638) : 'KEY_LEFT' is already implicitly declared on line 23("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":45)
-WARN  (EX3638) : 'KEY_RIGHT' is already implicitly declared on line 24("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":46)
-WARN  (EX3638) : 'KEY_DOWN' is already implicitly declared on line 25("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":47)
-WARN  (EX3638) : 'BTN_A' is already implicitly declared on line 26("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":48)
-WARN  (EX3638) : 'BTN_B' is already implicitly declared on line 27("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":49)
-WARN  (EX3638) : 'reset_key' is already implicitly declared on line 28("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":51)
-Analyzing Verilog file 'H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v'
-Compiling module 'matrix_led_top'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":1)
-WARN  (EX3791) : Expression size 9 truncated to fit in target size 8("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":59)
-Compiling module 'dualshock_controller'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v":36)
-Compiling module 'ps_pls_gan'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v":477)
-WARN  (EX3791) : Expression size 13 truncated to fit in target size 12("H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v":523)
-WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v":588)
-Compiling module 'txd_commnd'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v":245)
-Compiling module 'ps_txd'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v":628)
-Compiling module 'ps_rxd'("H:\git\PCB_LEDMatrix3216\sample\tetris\src\dualshock_controller.v":603)
-WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":803)
-WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":804)
-WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":805)
-WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":806)
-WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":807)
-WARN  (EX3791) : Expression size 32 truncated to fit in target size 5("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":898)
-WARN  (EX3791) : Expression size 32 truncated to fit in target size 6("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":899)
-NOTE  (EX0101) : Current top module is "matrix_led_top"
-WARN  (EX0211) : The output port "joystick_cs2" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":11)
-WARN  (EX0211) : The output port "joystick_mosi2" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":12)
-WARN  (EX0211) : The output port "joystick_clk2" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":13)
-WARN  (EX0211) : The output port "led[7]" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":19)
-WARN  (EX0211) : The output port "led[6]" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":19)
-WARN  (EX0211) : The output port "led[5]" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":19)
-WARN  (EX0211) : The output port "led[4]" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":19)
-WARN  (EX0211) : The output port "led[3]" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":19)
-WARN  (EX0211) : The output port "led[2]" of module "matrix_led_top" has no driver, assigning undriven bits to Z, simulation mismatch possible("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":19)
+Analyzing Verilog file 'C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\dualshock_controller.sv'
+Analyzing Verilog file 'C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv'
+Compiling module 'tetris_matrix_led_top'("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":9)
+Extracting RAM for identifier 'joy_rx2'("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":88)
+Compiling module 'tetris_dualshock_controller'("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\dualshock_controller.sv":436)
+Compiling module 'tetris_ps_pls_gan'("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\dualshock_controller.sv":84)
+Compiling module 'tetris_txd_commnd'("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\dualshock_controller.sv":202)
+Compiling module 'tetris_ps_txd'("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\dualshock_controller.sv":51)
+Compiling module 'tetris_ps_rxd'("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\dualshock_controller.sv":19)
+WARN  (EX3791) : Expression size 19 truncated to fit in target size 17("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":867)
+WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":868)
+WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":869)
+WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":870)
+WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":871)
+WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":872)
+WARN  (EX3791) : Expression size 32 truncated to fit in target size 5("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":975)
+WARN  (EX3791) : Expression size 8 truncated to fit in target size 6("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":976)
+NOTE  (EX0101) : Current top module is "tetris_matrix_led_top"
 [5%] Running netlist conversion ...
-WARN  (CV0016) : Input USER_KEY is unused("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":3)
-WARN  (CV0016) : Input USER_KEY2 is unused("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":4)
-WARN  (CV0016) : Input joystick_miso2 is unused("H:\git\PCB_LEDMatrix3216\sample\tetris\src\matrix_led_top.v":17)
+WARN  (CV0016) : Input USER_KEY is unused("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":11)
+WARN  (CV0016) : Input USER_KEY2 is unused("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":12)
+WARN  (CV0016) : Input joystick_miso2 is unused("C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\src\matrix_led_top.sv":25)
 Running device independent optimization ...
 [10%] Optimizing Phase 0 completed
 [15%] Optimizing Phase 1 completed
@@ -59,6 +37,6 @@ Running technical mapping ...
 [75%] Tech-Mapping Phase 2 completed
 [80%] Tech-Mapping Phase 3 completed
 [90%] Tech-Mapping Phase 4 completed
-[95%] Generate netlist file "H:\git\PCB_LEDMatrix3216\sample\tetris\impl\gwsynthesis\tetris.vg" completed
-[100%] Generate report file "H:\git\PCB_LEDMatrix3216\sample\tetris\impl\gwsynthesis\tetris_syn.rpt.html" completed
+[95%] Generate netlist file "C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\impl\gwsynthesis\tetris.vg" completed
+[100%] Generate report file "C:\Git\PCB_LEDMatrix3216\sample\tetris\veryl\impl\gwsynthesis\tetris_syn.rpt.html" completed
 GowinSynthesis finish

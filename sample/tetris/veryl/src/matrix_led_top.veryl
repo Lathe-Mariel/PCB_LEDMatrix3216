@@ -73,7 +73,7 @@ module matrix_led_top (
     var sclk_cnt: logic<8>;   // ceil(log2(200)) = 8 bits
 
     always_ff (clk) {
-        if sclk_cnt == 8'(SCLK_DELAY - 1) {
+        if sclk_cnt == (SCLK_DELAY - 1) {
             sclk     = ~sclk;
             sclk_cnt = 8'h00;
         } else {
@@ -197,8 +197,8 @@ module matrix_led_top (
     var soft_drop_step: logic;
     var drop_step    : logic;
 
-    assign control_pulse  = control_count == 20'(CONTROL_TICK_CYC - 1);
-    assign gravity_pulse  = gravity_count == 25'(GRAVITY_TICK_CYC - 1);
+    assign control_pulse  = control_count == (CONTROL_TICK_CYC - 1);
+    assign gravity_pulse  = gravity_count == (GRAVITY_TICK_CYC - 1);
     assign left_press     = control_pulse & key_left_ff1  & ~key_left_prev;
     assign right_press    = control_pulse & key_right_ff1 & ~key_right_prev;
     assign rot_r_press    = control_pulse & btn_a_ff1     & ~btn_a_prev;
@@ -304,7 +304,7 @@ module matrix_led_top (
     ) -> logic {
         var shape    : logic<16>;
         var bit_pos  : i32;
-        if local_x >= 0 && local_x < 4 && local_y >= 0 && local_y < 4 {
+        if local_x >= 0 && local_x <: 4 && local_y >= 0 && local_y <: 4 {
             shape   = piece_shape(piece_id, rot);
             bit_pos = 15 - (local_y * 4 + local_x);
             return shape[bit_pos as u32];
@@ -322,15 +322,16 @@ module matrix_led_top (
         base_y     : input i32,
     ) -> logic {
         var valid  : logic;
-        var bx, by : i32;
+        var bx : i32;
+        var by : i32;
         valid = 1'b1;
-        for ly: i32 in 0..4 {
-            for lx: i32 in 0..4 {
+        for ly in 0..4 {
+            for lx in 0..4 {
                 if piece_cell(piece_id, rot, lx, ly) {
                     bx = base_x + lx;
                     by = base_y + ly;
-                    if bx < 0 || bx >= FIELD_W as i32 ||
-                       by < 0 || by >= FIELD_H as i32 {
+                    if bx <: 0 || bx >= FIELD_W as i32 ||
+                       by <: 0 || by >= FIELD_H as i32 {
                         valid = 1'b0;
                     } else if board_state[(by * FIELD_W as i32 + bx) as u32] {
                         valid = 1'b0;
@@ -350,17 +351,18 @@ module matrix_led_top (
         base_y     : input i32,
     ) -> logic {
         var should_lock: logic;
-        var bx, by     : i32;
+        var bx     : i32;
+        var by     : i32;
         should_lock = 1'b0;
-        for ly: i32 in 0..4 {
-            for lx: i32 in 0..4 {
+        for ly in 0..4 {
+            for lx in 0..4 {
                 if piece_cell(piece_id, rot, lx, ly) &&
                    !piece_cell(piece_id, rot, lx, ly + 1) {
                     bx = base_x + lx;
                     by = base_y + ly;
                     if by >= FIELD_H as i32 - 1 {
                         should_lock = 1'b1;
-                    } else if bx >= 0 && bx < FIELD_W as i32 && by >= 0 &&
+                    } else if bx >= 0 && bx <: FIELD_W as i32 && by >= 0 &&
                               board_state[((by + 1) * FIELD_W as i32 + bx) as u32] {
                         should_lock = 1'b1;
                     }
@@ -377,11 +379,11 @@ module matrix_led_top (
     ) -> logic {
         var found: logic;
         found = 1'b0;
-        for ly: i32 in 0..4 {
-            for lx: i32 in 0..4 {
+        for ly in 0..4 {
+            for lx in 0..4 {
                 if piece_cell(cur_piece, cur_rot, lx, ly) &&
-                   cur_x as i32 + lx == bx &&
-                   cur_y as i32 + ly == by {
+                   cur_x + lx == bx &&
+                   cur_y + ly == by {
                     found = 1'b1;
                 }
             }
@@ -446,8 +448,8 @@ module matrix_led_top (
         local_y: input i32,
     ) -> logic {
         var src_row: logic<3>;
-        if local_x >= 0 && local_x < SCORE_W as i32 &&
-           local_y >= 0 && local_y < DIGIT_H as i32 {
+        if local_x >= 0 && local_x <: SCORE_W as i32 &&
+           local_y >= 0 && local_y <: DIGIT_H as i32 {
             src_row = digit_row_bits(digit, 4 - local_x);
             return src_row[2 - local_y as u32];
         } else {
@@ -482,7 +484,7 @@ module matrix_led_top (
 
         gray = 2'd0;
 
-        if screen_x as i32 < FIELD_W as i32 && screen_y < FIELD_H as i32 * CELL_H as i32 {
+        if screen_x <: FIELD_W && screen_y <: FIELD_H as i32 * CELL_H as i32 {
             board_y = screen_y / CELL_H as i32;
             if board_bits[(board_y * FIELD_W as i32 + screen_x as i32) as u32] {
                 gray = 2'd2;
@@ -490,23 +492,23 @@ module matrix_led_top (
             if current_piece_cell(screen_x as i32, board_y) && !game_over {
                 gray = 2'd3;
             }
-        } else if screen_x as i32 >= PREVIEW_X as i32 &&
-                  screen_x as i32 <  PREVIEW_X as i32 + PREVIEW_W as i32 &&
+        } else if screen_x >= PREVIEW_X as i32 &&
+                  screen_x <: PREVIEW_X as i32 + PREVIEW_W as i32 &&
                   screen_y          >= PREVIEW_Y as i32 &&
-                  screen_y          <  PREVIEW_Y as i32 + PREVIEW_H as i32 {
+                  screen_y          <: PREVIEW_Y as i32 + PREVIEW_H as i32 {
             local_x  = screen_x as i32 - PREVIEW_X as i32;
             preview_y = (screen_y - PREVIEW_Y as i32) / CELL_H as i32;
             if piece_cell(next_piece, 2'd0, local_x, preview_y) {
                 gray = 2'd3;
             }
-        } else if screen_x as i32 >= SCORE_X as i32 &&
-                  screen_x as i32 <  SCORE_X as i32 + SCORE_W as i32 &&
-                  screen_y          >= SCORE_Y as i32 &&
-                  screen_y          <  SCORE_Y as i32 + SCORE_DIGITS as i32 * DIGIT_STRIDE as i32 {
-            digit_slot = (screen_y - SCORE_Y as i32) / DIGIT_STRIDE as i32;
-            local_y    = (screen_y - SCORE_Y as i32) % DIGIT_STRIDE as i32;
-            local_x    = screen_x as i32 - SCORE_X as i32;
-            if digit_slot < SCORE_DIGITS as i32 && local_y < DIGIT_H as i32 &&
+        } else if screen_x >= SCORE_X &&
+                  screen_x <: SCORE_X + SCORE_W &&
+                  screen_y          >= SCORE_Y &&
+                  screen_y          <: SCORE_Y + SCORE_DIGITS * DIGIT_STRIDE {
+            digit_slot = (screen_y - SCORE_Y ) / DIGIT_STRIDE ;
+            local_y    = (screen_y - SCORE_Y ) % DIGIT_STRIDE ;
+            local_x    = screen_x - SCORE_X ;
+            if digit_slot <: SCORE_DIGITS && local_y <: DIGIT_H &&
                digit_pixel_rotated(score_digit_at(digit_slot), local_x, local_y) {
                 gray = 2'd3;
             }
@@ -514,9 +516,9 @@ module matrix_led_top (
 
         // Game-over checkerboard overlay
         if game_over &&
-           screen_x as i32 >= 10 && screen_x as i32 < 15 &&
-           screen_y >= 28 && screen_y < 36 &&
-           (screen_x as i32 + screen_y) & 1 != 0 {
+           screen_x >= 10 && screen_x <: 15 &&
+           screen_y >= 28 && screen_y <: 36 &&
+           (screen_x + screen_y) & 1 != 0 {
             gray = 2'd3;
         }
 
@@ -533,7 +535,7 @@ module matrix_led_top (
         var lane_bit: i32;
         var gray    : logic<2>;
         result = 32'd0;
-        for y: i32 in 0..DISPLAY_Y as i32 {
+        for y in 0..DISPLAY_Y as i32 {
             if COL0_IS_TOP != 0 {
                 panel_y = y;
             } else {
@@ -541,7 +543,7 @@ module matrix_led_top (
             }
             gray = logical_pixel_gray(y, x_idx);
             if gray[plane as u32] {
-                if panel_y >= 16 && panel_y < 32 {
+                if panel_y >= 16 && panel_y <: 32 {
                     lane_bit = panel_y - 16;
                     result[lane_bit as u32] = 1'b1;
                 } else if panel_y >= 48 {
@@ -563,7 +565,7 @@ module matrix_led_top (
         var lane_bit: i32;
         var gray    : logic<2>;
         result = 32'd0;
-        for y: i32 in 0..DISPLAY_Y as i32 {
+        for y in 0..DISPLAY_Y as i32 {
             if COL0_IS_TOP != 0 {
                 panel_y = y;
             } else {
@@ -571,10 +573,10 @@ module matrix_led_top (
             }
             gray = logical_pixel_gray(y, x_idx);
             if gray[plane as u32] {
-                if panel_y < 16 {
+                if panel_y <: 16 {
                     lane_bit = panel_y;
                     result[lane_bit as u32] = 1'b1;
-                } else if panel_y >= 32 && panel_y < 48 {
+                } else if panel_y >= 32 && panel_y <: 48 {
                     lane_bit = panel_y - 16;
                     result[lane_bit as u32] = 1'b1;
                 }
@@ -619,8 +621,8 @@ module matrix_led_top (
             cur_piece          = 3'd0;
             next_piece         = 3'd1;
             cur_rot            = 2'd0;
-            cur_x              = 5'(SPAWN_X);
-            cur_y              = 6'(SPAWN_Y);
+            cur_x              = SPAWN_X;
+            cur_y              = SPAWN_Y;
             game_over          = 1'b0;
             line_clear_pending = 1'b0;
             score_value        = 17'd0;
@@ -714,17 +716,13 @@ module matrix_led_top (
                 STATE_LATCH_OFF: {
                     latch      = 1'b0;
                     strobe_n   = 1'b0;
-                    hold_count = if plane_sel {
-                        14'((BASE_ON_TICKS << 1) - 1)
-                    } else {
-                        14'(BASE_ON_TICKS - 1)
-                    };
+                    hold_count = if plane_sel==1 ? ((BASE_ON_TICKS << 1) - 1) : (BASE_ON_TICKS - 1);
                     state = STATE_HOLD;
                 }
                 STATE_HOLD: {
                     if hold_count == 14'd0 {
                         strobe_n = 1'b1;
-                        if scan_row == 4'(DISPLAY_X - 1) {
+                        if scan_row == (DISPLAY_X - 1) {
                             scan_row  = 4'd0;
                             plane_sel = ~plane_sel;
                         } else {
@@ -758,10 +756,10 @@ module matrix_led_top (
                     clr_cnt = 0;
                     wr_row  = FIELD_H as i32 - 1;
 
-                    for r: i32 in 0..FIELD_H as i32 {
+                    for r in 0..FIELD_H as i32 {
                         rd_row = FIELD_H as i32 - 1 - r;
                         full   = 1'b1;
-                        for cx: i32 in 0..FIELD_W as i32 {
+                        for cx in 0..FIELD_W as i32 {
                             if !board_bits[(rd_row * FIELD_W as i32 + cx) as u32] {
                                 full = 1'b0;
                             }
@@ -769,7 +767,7 @@ module matrix_led_top (
                         if full {
                             clr_cnt = clr_cnt + 1;
                         } else {
-                            for cx: i32 in 0..FIELD_W as i32 {
+                            for cx in 0..FIELD_W as i32 {
                                 compact[(wr_row * FIELD_W as i32 + cx) as u32] =
                                     board_bits[(rd_row * FIELD_W as i32 + cx) as u32];
                             }
@@ -780,19 +778,19 @@ module matrix_led_top (
                     board_bits = compact;
 
                     ns = score_value as i32 + score_increment(clr_cnt);
-                    if ns > 99999 { ns = 99999; }
-                    score_value = ns as logic<17>;
-                    score_d4    = (ns / 10000 % 10) as logic<4>;
-                    score_d3    = (ns / 1000  % 10) as logic<4>;
-                    score_d2    = (ns / 100   % 10) as logic<4>;
-                    score_d1    = (ns / 10    % 10) as logic<4>;
-                    score_d0    = (ns         % 10) as logic<4>;
+                    if ns >: 99999 { ns = 99999; }
+                    score_value = ns;
+                    score_d4    = (ns / 10000 % 10) ;
+                    score_d3    = (ns / 1000  % 10) ;
+                    score_d2    = (ns / 100   % 10) ;
+                    score_d1    = (ns / 10    % 10) ;
+                    score_d0    = (ns         % 10) ;
 
                     cur_piece          = next_piece;
                     next_piece         = random_piece(lfsr);
                     cur_rot            = 2'd0;
-                    cur_x              = 5'(SPAWN_X);
-                    cur_y              = 6'(SPAWN_Y);
+                    cur_x              = SPAWN_X;
+                    cur_y              = SPAWN_Y;
                     line_clear_pending = 1'b0;
 
                     if !position_valid(compact, next_piece, 2'd0,
@@ -802,50 +800,51 @@ module matrix_led_top (
 
                 } else {
                     // ---- Normal game tick ----
-                    var wx, wy  : i32;
+                    var wx  : i32;
+                    var wy  : i32;
                     var wrot    : i32;
                     var locked  : logic;
 
-                    wx     = cur_x as i32;
-                    wy     = cur_y as i32;
+                    wx     = cur_x;
+                    wy     = cur_y;
                     wrot   = cur_rot as i32;
                     locked = 1'b0;
 
                     if piece_should_lock(board_bits, cur_piece, cur_rot,
-                                        cur_x as i32, cur_y as i32) {
+                                        cur_x , cur_y ) {
                         locked = 1'b1;
                     } else {
                         if rot_r_press {
                             if position_valid(board_bits, cur_piece,
-                                              2'((wrot + 1) & 3), wx, wy) {
+                                              ((wrot + 1) & 3), wx, wy) {
                                 wrot = (wrot + 1) & 3;
                             }
                         }
                         if rot_l_press {
                             if position_valid(board_bits, cur_piece,
-                                              2'((wrot + 3) & 3), wx, wy) {
+                                              ((wrot + 3) & 3), wx, wy) {
                                 wrot = (wrot + 3) & 3;
                             }
                         }
                         if left_press {
                             if position_valid(board_bits, cur_piece,
-                                              wrot as logic<2>, wx - 1, wy) {
+                                              wrot, wx - 1, wy) {
                                 wx = wx - 1;
                             }
                         }
                         if right_press {
                             if position_valid(board_bits, cur_piece,
-                                              wrot as logic<2>, wx + 1, wy) {
+                                              wrot , wx + 1, wy) {
                                 wx = wx + 1;
                             }
                         }
 
                         if piece_should_lock(board_bits, cur_piece,
-                                             wrot as logic<2>, wx, wy) {
+                                             wrot , wx, wy) {
                             locked = 1'b1;
                         } else if drop_step {
                             if position_valid(board_bits, cur_piece,
-                                             wrot as logic<2>, wx, wy + 1) {
+                                             wrot , wx, wy + 1) {
                                 wy = wy + 1;
                             }
                         }
@@ -858,19 +857,20 @@ module matrix_led_top (
                         var full   : logic;
 
                         tmp = board_bits;
-                        for ly: i32 in 0..4 {
-                            for lx: i32 in 0..4 {
-                                if piece_cell(cur_piece, wrot as logic<2>, lx, ly) {
+                        for ly in 0..4 {
+                            for lx in 0..4 {
+                                if piece_cell(cur_piece, wrot , lx, ly) {
                                     tmp[((wy + ly) * FIELD_W as i32 + (wx + lx)) as u32] = 1'b1;
                                 }
                             }
                         }
 
                         clr_cnt = 0;
-                        for r: i32 in 0..FIELD_H as i32 {
-                            var rr: i32 = FIELD_H as i32 - 1 - r;
+                        for r in 0..FIELD_H as i32 {
+                            var rr: i32;
+                            rr = FIELD_H - 1 - r;
                             full = 1'b1;
-                            for cx: i32 in 0..FIELD_W as i32 {
+                            for cx in 0..FIELD_W as i32 {
                                 if !tmp[(rr * FIELD_W as i32 + cx) as u32] {
                                     full = 1'b0;
                                 }
@@ -886,17 +886,17 @@ module matrix_led_top (
                             cur_piece  = next_piece;
                             next_piece = random_piece(lfsr);
                             cur_rot    = 2'd0;
-                            cur_x      = 5'(SPAWN_X);
-                            cur_y      = 6'(SPAWN_Y);
+                            cur_x      = SPAWN_X;
+                            cur_y      = SPAWN_Y;
                             if !position_valid(tmp, next_piece, 2'd0,
                                                SPAWN_X as i32, SPAWN_Y as i32) {
                                 game_over = 1'b1;
                             }
                         }
                     } else {
-                        cur_x   = wx as logic<5>;
-                        cur_y   = wy as logic<6>;
-                        cur_rot = wrot as logic<2>;
+                        cur_x   = wx ;
+                        cur_y   = wy ;
+                        cur_rot = wrot;
                     }
                 }
             }

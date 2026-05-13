@@ -5,8 +5,8 @@
     <Version>5</Version>
     <Device name="GW5A-25A" pn="GW5A-LV25MG121NES">gw5a25a-000</Device>
     <FileList>
-        <File path="src/dualshock_controller.v" type="file.verilog" enable="1"/>
-        <File path="src/matrix_led_top.v" type="file.verilog" enable="1"/>
+        <File path="src/dualshock_controller.sv" type="file.verilog" enable="1"/>
+        <File path="src/matrix_led_top.sv" type="file.verilog" enable="1"/>
         <File path="src/tang_primer_25k_pmod1_led_matrix.cst" type="file.cst" enable="1"/>
     </FileList>
 </Project>
