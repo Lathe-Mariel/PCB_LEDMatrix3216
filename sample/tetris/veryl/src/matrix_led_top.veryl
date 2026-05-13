@@ -1,0 +1,905 @@
+// ---------------------------------------------------------------------------
+// matrix_led_top.veryl
+//
+// Tetris game on 16x64 LED matrix with DualShock controller input.
+// Ported from matrix_led_top.v to Veryl.
+// Target: Gowin EDA synthesis.
+// ---------------------------------------------------------------------------
+
+module matrix_led_top (
+    clk         : input  clock,
+    user_key    : input  logic,
+    user_key2   : input  logic,
+    sin1        : output logic,
+    sin2        : output logic,
+    sin3        : output logic,
+    latch       : output logic,
+    led_clk     : output logic,
+    strobe_n    : output logic,
+    joystick_cs2  : output logic,
+    joystick_mosi2: output logic,
+    joystick_clk2 : output logic,
+    joystick_cs   : output logic,
+    joystick_mosi : output logic,
+    joystick_miso : input  logic,
+    joystick_miso2: input  logic,
+    joystick_clk  : output logic,
+    led           : output logic<8>,
+) {
+    // -----------------------------------------------------------------------
+    // Parameters
+    // -----------------------------------------------------------------------
+    const CLK_HZ          : u32 = 50_000_000;
+    const DISPLAY_X       : u32 = 16;
+    const DISPLAY_Y       : u32 = 64;
+    const FIELD_W         : u32 = 8;
+    const FIELD_H         : u32 = 32;
+    const CELL_H          : u32 = 1;
+    const PREVIEW_X       : u32 = 10;
+    const PREVIEW_Y       : u32 = 4;
+    const PREVIEW_W       : u32 = 4;
+    const PREVIEW_H       : u32 = 4;
+    const SCORE_X         : u32 = 10;
+    const SCORE_Y         : u32 = 40;
+    const SCORE_W         : u32 = 5;
+    const SCORE_DIGITS    : u32 = 5;
+    const DIGIT_H         : u32 = 3;
+    const DIGIT_STRIDE    : u32 = 4;
+    const CONTROL_TICK_CYC: u32 = CLK_HZ / 50;
+    const GRAVITY_TICK_CYC: u32 = CLK_HZ / 2;
+    const BASE_ON_TICKS   : u32 = 5_000;
+    const SPAWN_X         : u32 = 2;
+    const SPAWN_Y         : u32 = 0;
+    const SCLK_DELAY      : u32 = 200;
+
+    // Display state machine states
+    const STATE_LOAD        : logic<3> = 3'd0;
+    const STATE_SHIFT_SETUP : logic<3> = 3'd1;
+    const STATE_SHIFT_HIGH  : logic<3> = 3'd2;
+    const STATE_SHIFT_LOW   : logic<3> = 3'd3;
+    const STATE_LATCH_ON    : logic<3> = 3'd4;
+    const STATE_LATCH_OFF   : logic<3> = 3'd5;
+    const STATE_HOLD        : logic<3> = 3'd6;
+
+    // Display orientation
+    const ROW0_IS_LEFT   : u32 = 0;
+    const COL0_IS_TOP    : u32 = 0;
+    const SHIFT_MSB_FIRST: u32 = 0;
+
+    // -----------------------------------------------------------------------
+    // DualShock clock generation (250 kHz from 50 MHz)
+    // -----------------------------------------------------------------------
+    var sclk    : logic;
+    var sclk_cnt: logic<8>;   // ceil(log2(200)) = 8 bits
+
+    always_ff (clk) {
+        if sclk_cnt == 8'(SCLK_DELAY - 1) {
+            sclk     = ~sclk;
+            sclk_cnt = 8'h00;
+        } else {
+            sclk_cnt = sclk_cnt + 8'h01;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // DualShock controller instance
+    // -----------------------------------------------------------------------
+    var joy_rx : logic<8>[2];
+    var joy_rx2: logic<8>[2];   // second controller (unused in game logic)
+
+    // Unused outputs for second controller tied off
+    assign joystick_cs2   = 1'b1;
+    assign joystick_mosi2 = 1'b1;
+    assign joystick_clk2  = 1'b1;
+
+    inst controller: dualshock_controller (
+        i_clk250k  : sclk,
+        i_rstn     : 1'b1,
+        o_ps_clk   : joystick_clk,
+        o_ps_sel   : joystick_cs,
+        o_ps_txd   : joystick_mosi,
+        i_ps_rxd   : joystick_miso,
+        o_rxd_1    : joy_rx[0],
+        o_rxd_2    : joy_rx[1],
+        o_rxd_3    : _,
+        o_rxd_4    : _,
+        o_rxd_5    : _,
+        o_rxd_6    : _,
+        i_conf_sw  : 1'b0,
+        i_mode_sw  : 1'b1,
+        i_mode_en  : 1'b0,
+        i_vib_sw   : 2'b00,
+        i_vib_dat  : 8'hFF,
+    );
+
+    // -----------------------------------------------------------------------
+    // Button / joystick decoding
+    // -----------------------------------------------------------------------
+    // DualShock byte0 bit mapping (active-low):
+    //   bit7=left  bit5=right  bit6=down  bit3=start
+    // byte1: bit4=triangle  bit7=square  bit6=cross  bit5=circle
+    var key_left : logic;
+    var key_right: logic;
+    var key_down : logic;
+    var btn_a    : logic;
+    var btn_b    : logic;
+    var reset_key: logic;
+
+    assign key_left  = ~joy_rx[0][7];
+    assign key_right = ~joy_rx[0][5];
+    assign key_down  = ~joy_rx[0][6];
+    assign btn_a     = ~joy_rx[1][4];
+    assign btn_b     = ~joy_rx[1][7];
+    assign reset_key = ~joy_rx[0][3];
+
+    assign led[0] = ~joy_rx[0][5];
+    assign led[1] = ~joy_rx[0][7];
+    assign led[7:2] = 6'h00;
+
+    // -----------------------------------------------------------------------
+    // Registers
+    // -----------------------------------------------------------------------
+    var state              : logic<3>;
+    var plane_sel          : logic;
+    var scan_row           : logic<4>;
+    var bit_index          : logic<6>;
+    var row_shift_word     : logic<32>;
+    var col_shift_word_sin2: logic<32>;
+    var col_shift_word_sin3: logic<32>;
+    var hold_count         : logic<14>;
+
+    var control_count: logic<20>;
+    var gravity_count: logic<25>;
+
+    var key_left_ff0 : logic;
+    var key_left_ff1 : logic;
+    var key_right_ff0: logic;
+    var key_right_ff1: logic;
+    var key_down_ff0 : logic;
+    var key_down_ff1 : logic;
+    var btn_a_ff0    : logic;
+    var btn_a_ff1    : logic;
+    var btn_b_ff0    : logic;
+    var btn_b_ff1    : logic;
+
+    var key_left_prev : logic;
+    var key_right_prev: logic;
+    var btn_a_prev    : logic;
+    var btn_b_prev    : logic;
+
+    var board_bits        : logic<256>;
+    var temp_board_bits   : logic<256>;
+    var compact_board_bits: logic<256>;
+    var cur_piece         : logic<3>;
+    var next_piece        : logic<3>;
+    var cur_rot           : logic<2>;
+    var cur_x             : logic<5>;   // signed, but stored as 2's complement
+    var cur_y             : logic<6>;
+    var game_over         : logic;
+    var line_clear_pending: logic;
+    var score_value       : logic<17>;
+    var score_d4          : logic<4>;
+    var score_d3          : logic<4>;
+    var score_d2          : logic<4>;
+    var score_d1          : logic<4>;
+    var score_d0          : logic<4>;
+    var lfsr              : logic<16>;
+
+    // -----------------------------------------------------------------------
+    // Derived pulse / press signals
+    // -----------------------------------------------------------------------
+    var control_pulse: logic;
+    var gravity_pulse: logic;
+    var left_press   : logic;
+    var right_press  : logic;
+    var rot_r_press  : logic;
+    var rot_l_press  : logic;
+    var soft_drop_step: logic;
+    var drop_step    : logic;
+
+    assign control_pulse  = control_count == 20'(CONTROL_TICK_CYC - 1);
+    assign gravity_pulse  = gravity_count == 25'(GRAVITY_TICK_CYC - 1);
+    assign left_press     = control_pulse & key_left_ff1  & ~key_left_prev;
+    assign right_press    = control_pulse & key_right_ff1 & ~key_right_prev;
+    assign rot_r_press    = control_pulse & btn_a_ff1     & ~btn_a_prev;
+    assign rot_l_press    = control_pulse & btn_b_ff1     & ~btn_b_prev;
+    assign soft_drop_step = control_pulse & key_down_ff1;
+    assign drop_step      = gravity_pulse | soft_drop_step;
+
+    // -----------------------------------------------------------------------
+    // Functions
+    // -----------------------------------------------------------------------
+
+    // Build row one-hot word for a given column index
+    function row_word_for (
+        x_idx: input logic<4>,
+    ) -> logic<32> {
+        var one_hot_row: logic<16>;
+        var panel_row  : u32;
+        one_hot_row = 16'h0000;
+        if ROW0_IS_LEFT != 0 {
+            panel_row = x_idx as u32;
+        } else {
+            panel_row = (DISPLAY_X - 1) - x_idx as u32;
+        }
+        one_hot_row[panel_row] = 1'b1;
+        return {one_hot_row, one_hot_row};
+    }
+
+    // Pick one bit from a 32-bit word (MSB or LSB first)
+    function serial_pick32 (
+        word: input logic<32>,
+        idx : input logic<6>,
+    ) -> logic {
+        if SHIFT_MSB_FIRST != 0 {
+            return word[idx];
+        } else {
+            return word[31 - idx as u32];
+        }
+    }
+
+    // Tetromino shape look-up (4x4 bitmap packed into 16 bits)
+    function piece_shape (
+        piece_id: input logic<3>,
+        rot     : input logic<2>,
+    ) -> logic<16> {
+        var result: logic<16>;
+        result = 16'h0000;
+        case piece_id {
+            3'd0: {   // I
+                case rot {
+                    2'd0, 2'd2: result = 16'b0000_1111_0000_0000;
+                    default   : result = 16'b0010_0010_0010_0010;
+                }
+            }
+            3'd1: {   // O
+                result = 16'b0000_0110_0110_0000;
+            }
+            3'd2: {   // T
+                case rot {
+                    2'd0: result = 16'b0000_1110_0100_0000;
+                    2'd1: result = 16'b0100_0110_0100_0000;
+                    2'd2: result = 16'b0100_1110_0000_0000;
+                    default: result = 16'b0100_1100_0100_0000;
+                }
+            }
+            3'd3: {   // S
+                case rot {
+                    2'd0, 2'd2: result = 16'b0000_0110_1100_0000;
+                    default   : result = 16'b0100_0110_0010_0000;
+                }
+            }
+            3'd4: {   // Z
+                case rot {
+                    2'd0, 2'd2: result = 16'b0000_1100_0110_0000;
+                    default   : result = 16'b0010_0110_0100_0000;
+                }
+            }
+            3'd5: {   // J
+                case rot {
+                    2'd0: result = 16'b1000_1110_0000_0000;
+                    2'd1: result = 16'b0110_0100_0100_0000;
+                    2'd2: result = 16'b0000_1110_0010_0000;
+                    default: result = 16'b0100_0100_1100_0000;
+                }
+            }
+            default: {   // L
+                case rot {
+                    2'd0: result = 16'b0010_1110_0000_0000;
+                    2'd1: result = 16'b0100_0100_0110_0000;
+                    2'd2: result = 16'b0000_1110_1000_0000;
+                    default: result = 16'b1100_0100_0100_0000;
+                }
+            }
+        }
+        return result;
+    }
+
+    // Test if a local cell of a piece is set
+    function piece_cell (
+        piece_id: input logic<3>,
+        rot     : input logic<2>,
+        local_x : input i32,
+        local_y : input i32,
+    ) -> logic {
+        var shape    : logic<16>;
+        var bit_pos  : i32;
+        if local_x >= 0 && local_x < 4 && local_y >= 0 && local_y < 4 {
+            shape   = piece_shape(piece_id, rot);
+            bit_pos = 15 - (local_y * 4 + local_x);
+            return shape[bit_pos as u32];
+        } else {
+            return 1'b0;
+        }
+    }
+
+    // Check whether a piece position is valid on the board
+    function position_valid (
+        board_state: input logic<256>,
+        piece_id   : input logic<3>,
+        rot        : input logic<2>,
+        base_x     : input i32,
+        base_y     : input i32,
+    ) -> logic {
+        var valid  : logic;
+        var bx, by : i32;
+        valid = 1'b1;
+        for ly: i32 in 0..4 {
+            for lx: i32 in 0..4 {
+                if piece_cell(piece_id, rot, lx, ly) {
+                    bx = base_x + lx;
+                    by = base_y + ly;
+                    if bx < 0 || bx >= FIELD_W as i32 ||
+                       by < 0 || by >= FIELD_H as i32 {
+                        valid = 1'b0;
+                    } else if board_state[(by * FIELD_W as i32 + bx) as u32] {
+                        valid = 1'b0;
+                    }
+                }
+            }
+        }
+        return valid;
+    }
+
+    // Check whether the piece should lock (nothing below it)
+    function piece_should_lock (
+        board_state: input logic<256>,
+        piece_id   : input logic<3>,
+        rot        : input logic<2>,
+        base_x     : input i32,
+        base_y     : input i32,
+    ) -> logic {
+        var should_lock: logic;
+        var bx, by     : i32;
+        should_lock = 1'b0;
+        for ly: i32 in 0..4 {
+            for lx: i32 in 0..4 {
+                if piece_cell(piece_id, rot, lx, ly) &&
+                   !piece_cell(piece_id, rot, lx, ly + 1) {
+                    bx = base_x + lx;
+                    by = base_y + ly;
+                    if by >= FIELD_H as i32 - 1 {
+                        should_lock = 1'b1;
+                    } else if bx >= 0 && bx < FIELD_W as i32 && by >= 0 &&
+                              board_state[((by + 1) * FIELD_W as i32 + bx) as u32] {
+                        should_lock = 1'b1;
+                    }
+                }
+            }
+        }
+        return should_lock;
+    }
+
+    // Check if the current (active) piece occupies a given board cell
+    function current_piece_cell (
+        bx: input i32,
+        by: input i32,
+    ) -> logic {
+        var found: logic;
+        found = 1'b0;
+        for ly: i32 in 0..4 {
+            for lx: i32 in 0..4 {
+                if piece_cell(cur_piece, cur_rot, lx, ly) &&
+                   cur_x as i32 + lx == bx &&
+                   cur_y as i32 + ly == by {
+                    found = 1'b1;
+                }
+            }
+        }
+        return found;
+    }
+
+    // LFSR-based random piece selector
+    function random_piece (
+        seed: input logic<16>,
+    ) -> logic<3> {
+        case seed[2:0] {
+            3'd0   : return 3'd0;
+            3'd1   : return 3'd1;
+            3'd2   : return 3'd2;
+            3'd3   : return 3'd3;
+            3'd4   : return 3'd4;
+            3'd5   : return 3'd5;
+            default: return 3'd6;
+        }
+    }
+
+    // Score increment per number of cleared lines
+    function score_increment (
+        lines: input i32,
+    ) -> i32 {
+        case lines {
+            1      : return 1;
+            2      : return 4;
+            3      : return 16;
+            4      : return 256;
+            default: return 0;
+        }
+    }
+
+    // 3-bit row bitmap for a 7-segment-style digit
+    function digit_row_bits (
+        digit: input logic<4>,
+        row  : input i32,
+    ) -> logic<3> {
+        var r: logic<3>;
+        r = 3'b000;
+        case digit {
+            4'd0: { case row { 0: r=3'b111; 1: r=3'b101; 2: r=3'b101; 3: r=3'b101; 4: r=3'b111; default:{} } }
+            4'd1: { case row { 0: r=3'b010; 1: r=3'b110; 2: r=3'b010; 3: r=3'b010; 4: r=3'b111; default:{} } }
+            4'd2: { case row { 0: r=3'b111; 1: r=3'b001; 2: r=3'b111; 3: r=3'b100; 4: r=3'b111; default:{} } }
+            4'd3: { case row { 0: r=3'b111; 1: r=3'b001; 2: r=3'b111; 3: r=3'b001; 4: r=3'b111; default:{} } }
+            4'd4: { case row { 0: r=3'b101; 1: r=3'b101; 2: r=3'b111; 3: r=3'b001; 4: r=3'b001; default:{} } }
+            4'd5: { case row { 0: r=3'b111; 1: r=3'b100; 2: r=3'b111; 3: r=3'b001; 4: r=3'b111; default:{} } }
+            4'd6: { case row { 0: r=3'b111; 1: r=3'b100; 2: r=3'b111; 3: r=3'b101; 4: r=3'b111; default:{} } }
+            4'd7: { case row { 0: r=3'b111; 1: r=3'b001; 2: r=3'b001; 3: r=3'b001; 4: r=3'b001; default:{} } }
+            4'd8: { case row { 0: r=3'b111; 1: r=3'b101; 2: r=3'b111; 3: r=3'b101; 4: r=3'b111; default:{} } }
+            default: { case row { 0: r=3'b111; 1: r=3'b101; 2: r=3'b111; 3: r=3'b001; 4: r=3'b111; default:{} } }
+        }
+        return r;
+    }
+
+    // Read rotated digit pixel
+    function digit_pixel_rotated (
+        digit  : input logic<4>,
+        local_x: input i32,
+        local_y: input i32,
+    ) -> logic {
+        var src_row: logic<3>;
+        if local_x >= 0 && local_x < SCORE_W as i32 &&
+           local_y >= 0 && local_y < DIGIT_H as i32 {
+            src_row = digit_row_bits(digit, 4 - local_x);
+            return src_row[2 - local_y as u32];
+        } else {
+            return 1'b0;
+        }
+    }
+
+    // Get score digit by position index
+    function score_digit_at (
+        digit_index: input i32,
+    ) -> logic<4> {
+        case digit_index {
+            0      : return score_d4;
+            1      : return score_d3;
+            2      : return score_d2;
+            3      : return score_d1;
+            default: return score_d0;
+        }
+    }
+
+    // Compute 2-bit grey level for a logical screen pixel
+    function logical_pixel_gray (
+        screen_y: input i32,
+        screen_x: input logic<4>,
+    ) -> logic<2> {
+        var gray      : logic<2>;
+        var board_y   : i32;
+        var preview_y : i32;
+        var digit_slot: i32;
+        var local_x   : i32;
+        var local_y   : i32;
+
+        gray = 2'd0;
+
+        if screen_x as i32 < FIELD_W as i32 && screen_y < FIELD_H as i32 * CELL_H as i32 {
+            board_y = screen_y / CELL_H as i32;
+            if board_bits[(board_y * FIELD_W as i32 + screen_x as i32) as u32] {
+                gray = 2'd2;
+            }
+            if current_piece_cell(screen_x as i32, board_y) && !game_over {
+                gray = 2'd3;
+            }
+        } else if screen_x as i32 >= PREVIEW_X as i32 &&
+                  screen_x as i32 <  PREVIEW_X as i32 + PREVIEW_W as i32 &&
+                  screen_y          >= PREVIEW_Y as i32 &&
+                  screen_y          <  PREVIEW_Y as i32 + PREVIEW_H as i32 {
+            local_x  = screen_x as i32 - PREVIEW_X as i32;
+            preview_y = (screen_y - PREVIEW_Y as i32) / CELL_H as i32;
+            if piece_cell(next_piece, 2'd0, local_x, preview_y) {
+                gray = 2'd3;
+            }
+        } else if screen_x as i32 >= SCORE_X as i32 &&
+                  screen_x as i32 <  SCORE_X as i32 + SCORE_W as i32 &&
+                  screen_y          >= SCORE_Y as i32 &&
+                  screen_y          <  SCORE_Y as i32 + SCORE_DIGITS as i32 * DIGIT_STRIDE as i32 {
+            digit_slot = (screen_y - SCORE_Y as i32) / DIGIT_STRIDE as i32;
+            local_y    = (screen_y - SCORE_Y as i32) % DIGIT_STRIDE as i32;
+            local_x    = screen_x as i32 - SCORE_X as i32;
+            if digit_slot < SCORE_DIGITS as i32 && local_y < DIGIT_H as i32 &&
+               digit_pixel_rotated(score_digit_at(digit_slot), local_x, local_y) {
+                gray = 2'd3;
+            }
+        }
+
+        // Game-over checkerboard overlay
+        if game_over &&
+           screen_x as i32 >= 10 && screen_x as i32 < 15 &&
+           screen_y >= 28 && screen_y < 36 &&
+           (screen_x as i32 + screen_y) & 1 != 0 {
+            gray = 2'd3;
+        }
+
+        return gray;
+    }
+
+    // Build SIN2 column word for a given x column and plane
+    function column_word_sin2_for (
+        x_idx: input logic<4>,
+        plane: input logic,
+    ) -> logic<32> {
+        var result  : logic<32>;
+        var panel_y : i32;
+        var lane_bit: i32;
+        var gray    : logic<2>;
+        result = 32'd0;
+        for y: i32 in 0..DISPLAY_Y as i32 {
+            if COL0_IS_TOP != 0 {
+                panel_y = y;
+            } else {
+                panel_y = DISPLAY_Y as i32 - 1 - y;
+            }
+            gray = logical_pixel_gray(y, x_idx);
+            if gray[plane as u32] {
+                if panel_y >= 16 && panel_y < 32 {
+                    lane_bit = panel_y - 16;
+                    result[lane_bit as u32] = 1'b1;
+                } else if panel_y >= 48 {
+                    lane_bit = panel_y - 32;
+                    result[lane_bit as u32] = 1'b1;
+                }
+            }
+        }
+        return result;
+    }
+
+    // Build SIN3 column word for a given x column and plane
+    function column_word_sin3_for (
+        x_idx: input logic<4>,
+        plane: input logic,
+    ) -> logic<32> {
+        var result  : logic<32>;
+        var panel_y : i32;
+        var lane_bit: i32;
+        var gray    : logic<2>;
+        result = 32'd0;
+        for y: i32 in 0..DISPLAY_Y as i32 {
+            if COL0_IS_TOP != 0 {
+                panel_y = y;
+            } else {
+                panel_y = DISPLAY_Y as i32 - 1 - y;
+            }
+            gray = logical_pixel_gray(y, x_idx);
+            if gray[plane as u32] {
+                if panel_y < 16 {
+                    lane_bit = panel_y;
+                    result[lane_bit as u32] = 1'b1;
+                } else if panel_y >= 32 && panel_y < 48 {
+                    lane_bit = panel_y - 16;
+                    result[lane_bit as u32] = 1'b1;
+                }
+            }
+        }
+        return result;
+    }
+
+    // -----------------------------------------------------------------------
+    // Main always_ff block
+    // -----------------------------------------------------------------------
+    always_ff (clk) {
+        if reset_key {
+            // --- Synchronous reset (from DualShock Start button) ---
+            state              = STATE_LOAD;
+            plane_sel          = 1'b0;
+            scan_row           = 4'd0;
+            bit_index          = 6'd31;
+            row_shift_word     = 32'd0;
+            col_shift_word_sin2 = 32'd0;
+            col_shift_word_sin3 = 32'd0;
+            hold_count         = 14'd0;
+            control_count      = 20'd0;
+            gravity_count      = 25'd0;
+            key_left_ff0       = 1'b0;
+            key_left_ff1       = 1'b0;
+            key_right_ff0      = 1'b0;
+            key_right_ff1      = 1'b0;
+            key_down_ff0       = 1'b0;
+            key_down_ff1       = 1'b0;
+            btn_a_ff0          = 1'b0;
+            btn_a_ff1          = 1'b0;
+            btn_b_ff0          = 1'b0;
+            btn_b_ff1          = 1'b0;
+            key_left_prev      = 1'b0;
+            key_right_prev     = 1'b0;
+            btn_a_prev         = 1'b0;
+            btn_b_prev         = 1'b0;
+            board_bits         = 256'd0;
+            temp_board_bits    = 256'd0;
+            compact_board_bits = 256'd0;
+            cur_piece          = 3'd0;
+            next_piece         = 3'd1;
+            cur_rot            = 2'd0;
+            cur_x              = 5'(SPAWN_X);
+            cur_y              = 6'(SPAWN_Y);
+            game_over          = 1'b0;
+            line_clear_pending = 1'b0;
+            score_value        = 17'd0;
+            score_d4           = 4'd0;
+            score_d3           = 4'd0;
+            score_d2           = 4'd0;
+            score_d1           = 4'd0;
+            score_d0           = 4'd0;
+            lfsr               = 16'h1ACE;
+            sin1               = 1'b0;
+            sin2               = 1'b0;
+            sin3               = 1'b0;
+            latch              = 1'b0;
+            led_clk            = 1'b0;
+            strobe_n           = 1'b1;
+        } else {
+            // --- Input double-flip-flop synchronisers ---
+            key_left_ff0  = key_left;
+            key_left_ff1  = key_left_ff0;
+            key_right_ff0 = key_right;
+            key_right_ff1 = key_right_ff0;
+            key_down_ff0  = key_down;
+            key_down_ff1  = key_down_ff0;
+            btn_a_ff0     = btn_a;
+            btn_a_ff1     = btn_a_ff0;
+            btn_b_ff0     = btn_b;
+            btn_b_ff1     = btn_b_ff0;
+
+            // LFSR advance (Fibonacci: taps 16,14,13,11 → bits 15,13,12,10)
+            lfsr = {lfsr[14:0], lfsr[15] ^ lfsr[13] ^ lfsr[12] ^ lfsr[10]};
+
+            // Control timer
+            if control_pulse {
+                control_count  = 20'd0;
+                key_left_prev  = key_left_ff1;
+                key_right_prev = key_right_ff1;
+                btn_a_prev     = btn_a_ff1;
+                btn_b_prev     = btn_b_ff1;
+            } else {
+                control_count = control_count + 20'd1;
+            }
+
+            // Gravity timer
+            if gravity_pulse {
+                gravity_count = 25'd0;
+            } else {
+                gravity_count = gravity_count + 25'd1;
+            }
+
+            // ---------------------------------------------------------------
+            // LED display state machine
+            // ---------------------------------------------------------------
+            case state {
+                STATE_LOAD: {
+                    strobe_n            = 1'b1;
+                    latch               = 1'b0;
+                    led_clk             = 1'b0;
+                    sin1                = 1'b0;
+                    sin2                = 1'b0;
+                    sin3                = 1'b0;
+                    row_shift_word      = row_word_for(scan_row);
+                    col_shift_word_sin2 = column_word_sin2_for(scan_row, plane_sel);
+                    col_shift_word_sin3 = column_word_sin3_for(scan_row, plane_sel);
+                    bit_index           = 6'd31;
+                    state               = STATE_SHIFT_SETUP;
+                }
+                STATE_SHIFT_SETUP: {
+                    led_clk = 1'b0;
+                    sin1    = serial_pick32(row_shift_word,      bit_index);
+                    sin2    = serial_pick32(col_shift_word_sin2, bit_index);
+                    sin3    = serial_pick32(col_shift_word_sin3, bit_index);
+                    state   = STATE_SHIFT_HIGH;
+                }
+                STATE_SHIFT_HIGH: {
+                    led_clk = 1'b1;
+                    state   = STATE_SHIFT_LOW;
+                }
+                STATE_SHIFT_LOW: {
+                    led_clk = 1'b0;
+                    if bit_index == 6'd0 {
+                        state = STATE_LATCH_ON;
+                    } else {
+                        bit_index = bit_index - 6'd1;
+                        state     = STATE_SHIFT_SETUP;
+                    }
+                }
+                STATE_LATCH_ON: {
+                    latch = 1'b1;
+                    state = STATE_LATCH_OFF;
+                }
+                STATE_LATCH_OFF: {
+                    latch      = 1'b0;
+                    strobe_n   = 1'b0;
+                    hold_count = if plane_sel {
+                        14'((BASE_ON_TICKS << 1) - 1)
+                    } else {
+                        14'(BASE_ON_TICKS - 1)
+                    };
+                    state = STATE_HOLD;
+                }
+                STATE_HOLD: {
+                    if hold_count == 14'd0 {
+                        strobe_n = 1'b1;
+                        if scan_row == 4'(DISPLAY_X - 1) {
+                            scan_row  = 4'd0;
+                            plane_sel = ~plane_sel;
+                        } else {
+                            scan_row = scan_row + 4'd1;
+                        }
+                        state = STATE_LOAD;
+                    } else {
+                        hold_count = hold_count - 14'd1;
+                    }
+                }
+                default: {
+                    state = STATE_LOAD;
+                }
+            }
+
+            // ---------------------------------------------------------------
+            // Tetris game logic (runs on control_pulse or gravity_pulse)
+            // ---------------------------------------------------------------
+            if (control_pulse | gravity_pulse) & ~game_over {
+
+                if line_clear_pending {
+                    // ---- Compact board: remove full rows ----
+                    var compact: logic<256>;
+                    var clr_cnt: i32;
+                    var wr_row : i32;
+                    var rd_row : i32;
+                    var full   : logic;
+                    var ns     : i32;
+
+                    compact = 256'd0;
+                    clr_cnt = 0;
+                    wr_row  = FIELD_H as i32 - 1;
+
+                    for r: i32 in 0..FIELD_H as i32 {
+                        rd_row = FIELD_H as i32 - 1 - r;
+                        full   = 1'b1;
+                        for cx: i32 in 0..FIELD_W as i32 {
+                            if !board_bits[(rd_row * FIELD_W as i32 + cx) as u32] {
+                                full = 1'b0;
+                            }
+                        }
+                        if full {
+                            clr_cnt = clr_cnt + 1;
+                        } else {
+                            for cx: i32 in 0..FIELD_W as i32 {
+                                compact[(wr_row * FIELD_W as i32 + cx) as u32] =
+                                    board_bits[(rd_row * FIELD_W as i32 + cx) as u32];
+                            }
+                            wr_row = wr_row - 1;
+                        }
+                    }
+
+                    board_bits = compact;
+
+                    ns = score_value as i32 + score_increment(clr_cnt);
+                    if ns > 99999 { ns = 99999; }
+                    score_value = ns as logic<17>;
+                    score_d4    = (ns / 10000 % 10) as logic<4>;
+                    score_d3    = (ns / 1000  % 10) as logic<4>;
+                    score_d2    = (ns / 100   % 10) as logic<4>;
+                    score_d1    = (ns / 10    % 10) as logic<4>;
+                    score_d0    = (ns         % 10) as logic<4>;
+
+                    cur_piece          = next_piece;
+                    next_piece         = random_piece(lfsr);
+                    cur_rot            = 2'd0;
+                    cur_x              = 5'(SPAWN_X);
+                    cur_y              = 6'(SPAWN_Y);
+                    line_clear_pending = 1'b0;
+
+                    if !position_valid(compact, next_piece, 2'd0,
+                                       SPAWN_X as i32, SPAWN_Y as i32) {
+                        game_over = 1'b1;
+                    }
+
+                } else {
+                    // ---- Normal game tick ----
+                    var wx, wy  : i32;
+                    var wrot    : i32;
+                    var locked  : logic;
+
+                    wx     = cur_x as i32;
+                    wy     = cur_y as i32;
+                    wrot   = cur_rot as i32;
+                    locked = 1'b0;
+
+                    if piece_should_lock(board_bits, cur_piece, cur_rot,
+                                        cur_x as i32, cur_y as i32) {
+                        locked = 1'b1;
+                    } else {
+                        if rot_r_press {
+                            if position_valid(board_bits, cur_piece,
+                                              2'((wrot + 1) & 3), wx, wy) {
+                                wrot = (wrot + 1) & 3;
+                            }
+                        }
+                        if rot_l_press {
+                            if position_valid(board_bits, cur_piece,
+                                              2'((wrot + 3) & 3), wx, wy) {
+                                wrot = (wrot + 3) & 3;
+                            }
+                        }
+                        if left_press {
+                            if position_valid(board_bits, cur_piece,
+                                              wrot as logic<2>, wx - 1, wy) {
+                                wx = wx - 1;
+                            }
+                        }
+                        if right_press {
+                            if position_valid(board_bits, cur_piece,
+                                              wrot as logic<2>, wx + 1, wy) {
+                                wx = wx + 1;
+                            }
+                        }
+
+                        if piece_should_lock(board_bits, cur_piece,
+                                             wrot as logic<2>, wx, wy) {
+                            locked = 1'b1;
+                        } else if drop_step {
+                            if position_valid(board_bits, cur_piece,
+                                             wrot as logic<2>, wx, wy + 1) {
+                                wy = wy + 1;
+                            }
+                        }
+                    }
+
+                    if locked {
+                        // ---- Lock piece into board ----
+                        var tmp    : logic<256>;
+                        var clr_cnt: i32;
+                        var full   : logic;
+
+                        tmp = board_bits;
+                        for ly: i32 in 0..4 {
+                            for lx: i32 in 0..4 {
+                                if piece_cell(cur_piece, wrot as logic<2>, lx, ly) {
+                                    tmp[((wy + ly) * FIELD_W as i32 + (wx + lx)) as u32] = 1'b1;
+                                }
+                            }
+                        }
+
+                        clr_cnt = 0;
+                        for r: i32 in 0..FIELD_H as i32 {
+                            var rr: i32 = FIELD_H as i32 - 1 - r;
+                            full = 1'b1;
+                            for cx: i32 in 0..FIELD_W as i32 {
+                                if !tmp[(rr * FIELD_W as i32 + cx) as u32] {
+                                    full = 1'b0;
+                                }
+                            }
+                            if full { clr_cnt = clr_cnt + 1; }
+                        }
+
+                        board_bits = tmp;
+
+                        if clr_cnt != 0 {
+                            line_clear_pending = 1'b1;
+                        } else {
+                            cur_piece  = next_piece;
+                            next_piece = random_piece(lfsr);
+                            cur_rot    = 2'd0;
+                            cur_x      = 5'(SPAWN_X);
+                            cur_y      = 6'(SPAWN_Y);
+                            if !position_valid(tmp, next_piece, 2'd0,
+                                               SPAWN_X as i32, SPAWN_Y as i32) {
+                                game_over = 1'b1;
+                            }
+                        }
+                    } else {
+                        cur_x   = wx as logic<5>;
+                        cur_y   = wy as logic<6>;
+                        cur_rot = wrot as logic<2>;
+                    }
+                }
+            }
+        }
+    }
+}

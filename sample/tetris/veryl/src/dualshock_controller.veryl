@@ -1,0 +1,525 @@
+// -------------------------------------------------------------------
+//
+// PLAYSTATION CONTROLLER (DUALSHOCK TYPE) INTERFACE
+//
+// Original Version : 2.00
+// Copyright(c) 2003 - 2004 Katsumi Degawa , All rights reserved
+// Ported to Veryl
+//
+// Poll controller status every 2^Timer_siz clock cycles
+// 250KHz / 2^12 = 61Hz
+//
+// -------------------------------------------------------------------
+
+// Timer size: 12 for synthesis, 18 for simulation
+const TIMER_SIZ: u32 = 12;
+
+// ---------------------------------------------------------------------------
+// ps_rxd : Serial receive shift register
+// ---------------------------------------------------------------------------
+module ps_rxd (
+    i_clk   : input  clock,
+    i_rstn  : input  reset,
+    i_wt    : input  logic,
+    i_ps_rxd: input  logic,
+    o_rxd_dat: output logic<8>,
+) {
+    var sp: logic<8>;
+
+    // Shift register: shift in MSB from i_ps_rxd on rising edge of i_clk
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            sp = 8'h01;
+        } else {
+            sp = {i_ps_rxd, sp[7:1]};
+        }
+    }
+
+    // Latch on rising edge of i_wt
+    always_ff (i_wt, i_rstn) {
+        if_reset {
+            o_rxd_dat = 8'h01;
+        } else {
+            o_rxd_dat = sp;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ps_txd : Serial transmit shift register
+// ---------------------------------------------------------------------------
+module ps_txd (
+    i_clk    : input  clock,
+    i_rstn   : input  reset,
+    i_wt     : input  logic,
+    i_en     : input  logic,
+    i_txd_dat: input  logic<8>,
+    o_ps_txd : output logic,
+) {
+    var ps: logic<8>;
+
+    // Shift out LSB first on falling edge of i_clk
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            o_ps_txd = 1'b1;
+            ps       = 8'h00;
+        } else {
+            if i_wt {
+                ps = i_txd_dat;
+            } else {
+                if i_en {
+                    o_ps_txd = ps[0];
+                    ps       = {1'b1, ps[7:1]};
+                } else {
+                    o_ps_txd = 1'b1;
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ps_pls_gan : Pulse / timing generator
+// ---------------------------------------------------------------------------
+module ps_pls_gan #(
+    param TIMER_SIZE: u32 = TIMER_SIZ,
+) (
+    i_clk          : input  clock,
+    i_rstn         : input  reset,
+    i_type         : input  logic,        // 0=digital, 1=analog
+    o_scan_seq_pls : output logic,
+    o_rxwt         : output logic,
+    o_txwt         : output logic,
+    o_txset        : output logic,
+    o_txen         : output logic,
+    o_ps_clk       : output logic,
+    o_ps_sel       : output logic,
+    o_byte_cnt     : output logic<4>,
+    o_timer        : output logic<TIMER_SIZE>,
+) {
+    var timer      : logic<TIMER_SIZE>;
+    var ps_clk_gate: logic;
+    var ps_sel     : logic;
+    var rxwt       : logic;
+    var txwt       : logic;
+    var txset      : logic;
+
+    // Timer counter
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            timer = '0;
+        } else {
+            timer = timer + 1 as logic<TIMER_SIZE>;
+        }
+    }
+
+    // Scan sequence pulse (one cycle at timer==0)
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            o_scan_seq_pls = 1'b0;
+        } else {
+            if timer == '0 {
+                o_scan_seq_pls = 1'b1;
+            } else {
+                o_scan_seq_pls = 1'b0;
+            }
+        }
+    }
+
+    // CLK gate / RXWT / TXWT / TXSET timing (lower 5 bits of timer)
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            ps_clk_gate = 1'b1;
+            rxwt        = 1'b0;
+            txwt        = 1'b0;
+            txset       = 1'b0;
+        } else {
+            case timer[4:0] {
+                5'd6 : txset       = 1'b1;
+                5'd8 : txset       = 1'b0;
+                5'd9 : txwt        = 1'b1;
+                5'd11: txwt        = 1'b0;
+                5'd12: ps_clk_gate = 1'b0;
+                5'd20: ps_clk_gate = 1'b1;
+                5'd21: rxwt        = 1'b1;
+                5'd23: rxwt        = 1'b0;
+                default: {}
+            }
+        }
+    }
+
+    // SEL (chip select, active-low to controller)
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            ps_sel = 1'b1;
+        } else {
+            if o_scan_seq_pls == 1'b1 {
+                ps_sel = 1'b0;
+            } else if i_type == 1'b0 && timer == TIMER_SIZE'(158) {
+                ps_sel = 1'b1;
+            } else if i_type == 1'b1 && timer == TIMER_SIZE'(286) {
+                ps_sel = 1'b1;
+            }
+        }
+    }
+
+    // Byte counter
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            o_byte_cnt = 4'h0;
+        } else {
+            if o_scan_seq_pls == 1'b1 {
+                o_byte_cnt = 4'h0;
+            } else {
+                if timer[4:0] == 5'b11111 {
+                    if i_type == 1'b0 && o_byte_cnt == 4'd5 {
+                        // hold
+                    } else if i_type == 1'b1 && o_byte_cnt == 4'd9 {
+                        // hold
+                    } else {
+                        o_byte_cnt = o_byte_cnt + 4'h1;
+                    }
+                }
+            }
+        }
+    }
+
+    assign o_timer   = timer;
+    assign o_ps_clk  = ps_clk_gate | i_clk | ps_sel;
+    assign o_ps_sel  = ps_sel;
+    assign o_rxwt    = ~ps_sel & rxwt;
+    assign o_txset   = ~ps_sel & txset;
+    assign o_txwt    = ~ps_sel & txwt;
+    assign o_txen    = ~ps_sel & (~ps_clk_gate);
+}
+
+// ---------------------------------------------------------------------------
+// txd_commnd : Command / config state machine (DualShock)
+// ---------------------------------------------------------------------------
+module txd_commnd (
+    i_clk     : input  clock,
+    i_rstn    : input  reset,
+    i_byte_cnt: input  logic<4>,
+    i_mode    : input  logic<3>,   // {conf_sw, ~mode_en, mode_sw}
+    i_vib_sw  : input  logic<2>,
+    i_vib_dat : input  logic<8>,
+    i_rxd_dat : input  logic<8>,
+    o_txd_dat : output logic<8>,
+    o_type    : output logic,
+    o_conf_ent: output logic,
+) {
+    var pad_mode    : logic<2>;
+    var ds_sw       : logic;
+    var conf_state  : logic<3>;
+    var conf_entry  : logic;
+    var conf_ent_reg: logic;
+    var conf_done   : logic;
+    var pad_status  : logic;
+    var pad_id      : logic;
+
+    assign pad_mode  = i_mode[1:0];
+    assign ds_sw     = i_mode[2];
+    assign o_type    = pad_id;
+    assign o_conf_ent = conf_entry;
+
+    // pad_id detection from RXD byte 2
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            pad_id = 1'b0;
+        } else {
+            if i_byte_cnt == 4'd2 {
+                case i_rxd_dat {
+                    8'h23: pad_id = 1'b1;
+                    8'h41: pad_id = 1'b0;
+                    8'h53: pad_id = 1'b1;
+                    8'h73: pad_id = 1'b1;
+                    8'hE3: pad_id = 1'b1;
+                    8'hF3: pad_id = 1'b1;
+                    default: pad_id = 1'b0;
+                }
+            }
+        }
+    }
+
+    // Main command / config state machine
+    always_ff (i_clk, i_rstn) {
+        if_reset {
+            o_txd_dat    = 8'h00;
+            conf_entry   = 1'b0;
+            conf_ent_reg = 1'b0;
+            conf_done    = 1'b1;
+            conf_state   = 3'd0;
+            pad_status   = 1'b0;
+        } else {
+            if ~conf_entry {
+                // Normal polling mode
+                case i_byte_cnt {
+                    4'd0: o_txd_dat = 8'h01;
+                    4'd1: o_txd_dat = 8'h42;
+                    4'd3: {
+                        if i_rxd_dat == 8'h00 { conf_ent_reg = 1'b1; }
+                        if pad_status {
+                            if i_vib_sw[0] { o_txd_dat = 8'h01; }
+                            else            { o_txd_dat = 8'h00; }
+                        } else {
+                            if i_vib_sw[0] | i_vib_sw[1] { o_txd_dat = 8'h40; }
+                            else                          { o_txd_dat = 8'h00; }
+                        }
+                    }
+                    4'd4: {
+                        if pad_status {
+                            if i_vib_sw[1] { o_txd_dat = i_vib_dat; }
+                            else           { o_txd_dat = 8'h00;     }
+                        } else {
+                            if i_vib_sw[0] | i_vib_sw[1] { o_txd_dat = 8'h01; }
+                            else                          { o_txd_dat = 8'h00; }
+                        }
+                        if pad_id == 1'b0 {
+                            if conf_state == 3'd0 && ds_sw {
+                                conf_entry = 1'b1;
+                            }
+                            if conf_state == 3'd7 && (pad_status & conf_ent_reg) {
+                                conf_state = 3'd0;
+                                conf_entry = 1'b1;
+                            }
+                        }
+                    }
+                    4'd8: {
+                        o_txd_dat = 8'h00;
+                        if pad_id == 1'b1 {
+                            if conf_state == 3'd0 && ds_sw {
+                                conf_entry = 1'b1;
+                            }
+                            if conf_state == 3'd7 && (pad_status & conf_ent_reg) {
+                                conf_state = 3'd0;
+                                conf_entry = 1'b1;
+                            }
+                        }
+                    }
+                    default: o_txd_dat = 8'h00;
+                }
+            } else {
+                // Config mode
+                case conf_state {
+                    // config_mode_enter (0x43): 01,43,00,01,00,...
+                    3'd0: {
+                        case i_byte_cnt {
+                            4'd0: {
+                                o_txd_dat  = 8'h01;
+                                conf_done  = 1'b0;
+                            }
+                            4'd1: o_txd_dat = 8'h43;
+                            4'd3: o_txd_dat = 8'h01;
+                            4'd4: {
+                                o_txd_dat = 8'h00;
+                                if pad_id == 1'b0 {
+                                    if pad_status { conf_state = 3'd3; }
+                                    else          { conf_state = 3'd1; }
+                                }
+                            }
+                            4'd8: {
+                                o_txd_dat = 8'h00;
+                                if pad_id == 1'b1 {
+                                    if pad_status { conf_state = 3'd3; }
+                                    else          { conf_state = 3'd1; }
+                                }
+                            }
+                            default: o_txd_dat = 8'h00;
+                        }
+                    }
+                    // query_model_and_mode (0x45): 01,45,00,5A,...
+                    3'd1: {
+                        case i_byte_cnt {
+                            4'd0: o_txd_dat = 8'h01;
+                            4'd1: o_txd_dat = 8'h45;
+                            4'd2: {
+                                o_txd_dat = 8'h00;
+                                conf_done = if i_rxd_dat == 8'hF3 { 1'b0 } else { 1'b1 };
+                            }
+                            4'd4: {
+                                o_txd_dat = 8'h00;
+                                if i_rxd_dat == 8'h01 | i_rxd_dat == 8'h03 {
+                                    pad_status = 1'b1;
+                                }
+                                if pad_id == 1'b0 && conf_done == 1'b1 {
+                                    conf_state = 3'd7;
+                                    conf_entry = 1'b0;
+                                }
+                            }
+                            4'd8: {
+                                o_txd_dat  = 8'h00;
+                                conf_state = 3'd2;
+                                if pad_id == 1'b1 && conf_done == 1'b1 {
+                                    conf_state = 3'd7;
+                                    conf_entry = 1'b0;
+                                }
+                            }
+                            default: o_txd_dat = 8'h00;
+                        }
+                    }
+                    // set_mode_and_lock (0x44)
+                    3'd2: {
+                        case i_byte_cnt {
+                            4'd0: o_txd_dat = 8'h01;
+                            4'd1: o_txd_dat = 8'h44;
+                            4'd3: o_txd_dat = if pad_mode[0] { 8'h01 } else { 8'h00 };
+                            4'd4: o_txd_dat = if pad_mode[1] { 8'h03 } else { 8'h00 };
+                            4'd8: {
+                                o_txd_dat  = 8'h00;
+                                conf_state = 3'd3;
+                            }
+                            default: o_txd_dat = 8'h00;
+                        }
+                    }
+                    // vibration_enable (0x4D)
+                    3'd3: {
+                        case i_byte_cnt {
+                            4'd0: o_txd_dat = 8'h01;
+                            4'd1: o_txd_dat = 8'h4D;
+                            4'd4: o_txd_dat = 8'h01;
+                            4'd8: {
+                                o_txd_dat  = 8'hFF;
+                                conf_state = 3'd6;
+                            }
+                            default: o_txd_dat = 8'hFF;
+                        }
+                    }
+                    // config_mode_exit (0x43 with exit flag)
+                    3'd6: {
+                        case i_byte_cnt {
+                            4'd0: o_txd_dat = 8'h01;
+                            4'd1: o_txd_dat = 8'h43;
+                            4'd8: {
+                                o_txd_dat    = 8'h5A;
+                                conf_state   = 3'd7;
+                                conf_entry   = 1'b0;
+                                conf_done    = 1'b1;
+                                conf_ent_reg = 1'b0;
+                            }
+                            default: o_txd_dat = 8'h5A;
+                        }
+                    }
+                    default: {}
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// dualshock_controller : Top-level controller
+// ---------------------------------------------------------------------------
+module dualshock_controller (
+    i_clk250k : input  clock,
+    i_rstn    : input  reset,
+    o_ps_clk  : output logic,
+    o_ps_sel  : output logic,
+    o_ps_txd  : output logic,
+    i_ps_rxd  : input  logic,
+    o_rxd_1   : output logic<8>,
+    o_rxd_2   : output logic<8>,
+    o_rxd_3   : output logic<8>,
+    o_rxd_4   : output logic<8>,
+    o_rxd_5   : output logic<8>,
+    o_rxd_6   : output logic<8>,
+    i_conf_sw : input  logic,   // DualShock config, active-hi
+    i_mode_sw : input  logic,   // 0=digital, 1=analog
+    i_mode_en : input  logic,   // mode control enable
+    i_vib_sw  : input  logic<2>,
+    i_vib_dat : input  logic<8>,
+) {
+    // Internal wires
+    var w_scan_seq_pls: logic;
+    var w_type        : logic;
+    var w_byte_cnt    : logic<4>;
+    var w_rxwt        : logic;
+    var w_txwt        : logic;
+    var w_txset       : logic;
+    var w_txen        : logic;
+    var w_txd_dat     : logic<8>;
+    var w_rxd_dat     : logic<8>;
+    var w_conf_ent    : logic;
+    var w_rxd_mask    : logic;
+
+    // Pulse / timing generator
+    inst pls: ps_pls_gan (
+        i_clk          : i_clk250k,
+        i_rstn         : i_rstn,
+        i_type         : w_type,
+        o_scan_seq_pls : w_scan_seq_pls,
+        o_rxwt         : w_rxwt,
+        o_txwt         : w_txwt,
+        o_txset        : w_txset,
+        o_txen         : w_txen,
+        o_ps_clk       : o_ps_clk,
+        o_ps_sel       : o_ps_sel,
+        o_byte_cnt     : w_byte_cnt,
+        o_timer        : _,
+    );
+
+    // Command state machine
+    inst cmd: txd_commnd (
+        i_clk      : w_txset,
+        i_rstn     : i_rstn,
+        i_byte_cnt : w_byte_cnt,
+        i_mode     : {i_conf_sw, ~i_mode_en, i_mode_sw},
+        i_vib_sw   : i_vib_sw,
+        i_vib_dat  : i_vib_dat,
+        i_rxd_dat  : w_rxd_dat,
+        o_txd_dat  : w_txd_dat,
+        o_type     : w_type,
+        o_conf_ent : w_conf_ent,
+    );
+
+    // Transmitter
+    inst txd: ps_txd (
+        i_clk    : i_clk250k,
+        i_rstn   : i_rstn,
+        i_wt     : w_txwt,
+        i_en     : w_txen,
+        i_txd_dat: w_txd_dat,
+        o_ps_txd : o_ps_txd,
+    );
+
+    // Receiver
+    inst rxd: ps_rxd (
+        i_clk    : o_ps_clk,
+        i_rstn   : i_rstn,
+        i_wt     : w_rxwt,
+        i_ps_rxd : i_ps_rxd,
+        o_rxd_dat: w_rxd_dat,
+    );
+
+    // RXD mask latch (mask when config entry active)
+    always_ff (w_scan_seq_pls, i_rstn) {
+        if_reset {
+            w_rxd_mask = 1'b0;
+        } else {
+            w_rxd_mask = ~w_conf_ent;
+        }
+    }
+
+    // Decode received bytes into output registers
+    always_ff (w_rxwt, i_rstn) {
+        if_reset {
+            o_rxd_1 = 8'hFF;
+            o_rxd_2 = 8'hFF;
+            o_rxd_3 = 8'hFF;
+            o_rxd_4 = 8'hFF;
+            o_rxd_5 = 8'hFF;
+            o_rxd_6 = 8'hFF;
+        } else {
+            if w_rxd_mask {
+                case w_byte_cnt {
+                    4'd3: o_rxd_1 = w_rxd_dat;
+                    4'd4: o_rxd_2 = w_rxd_dat;
+                    4'd5: o_rxd_3 = w_rxd_dat;
+                    4'd6: o_rxd_4 = w_rxd_dat;
+                    4'd7: o_rxd_5 = w_rxd_dat;
+                    4'd8: o_rxd_6 = w_rxd_dat;
+                    default: {}
+                }
+            }
+        }
+    }
+}
