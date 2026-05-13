@@ -8,5 +8,6 @@
         <File path="src/dualshock_controller.sv" type="file.verilog" enable="1"/>
         <File path="src/matrix_led_top.sv" type="file.verilog" enable="1"/>
         <File path="src/tang_primer_25k_pmod1_led_matrix.cst" type="file.cst" enable="1"/>
+        <File path="src/tetris.rao" type="file.gao" enable="1"/>
     </FileList>
 </Project>

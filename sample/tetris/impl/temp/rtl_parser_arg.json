@@ -2,11 +2,11 @@
  "Device" : "GW5A-25A",
  "Files" : [
   {
-   "Path" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
+   "Path" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
    "Type" : "verilog"
   },
   {
-   "Path" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+   "Path" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
    "Type" : "verilog"
   }
  ],

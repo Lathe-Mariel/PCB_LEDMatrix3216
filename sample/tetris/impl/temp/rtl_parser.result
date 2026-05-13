@@ -1,5 +1,13 @@
 [
  {
+  "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+  "InstLine" : 191,
+  "InstName" : "txd_commnd_EZ",
+  "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+  "ModuleLine" : 191,
+  "ModuleName" : "txd_commnd_EZ"
+ },
+ {
   "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
   "InstLine" : 1,
   "InstName" : "matrix_led_top",
@@ -50,13 +58,5 @@
     ]
    }
   ]
- },
- {
-  "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
-  "InstLine" : 191,
-  "InstName" : "txd_commnd_EZ",
-  "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
-  "ModuleLine" : 191,
-  "ModuleName" : "txd_commnd_EZ"
  }
 ]
