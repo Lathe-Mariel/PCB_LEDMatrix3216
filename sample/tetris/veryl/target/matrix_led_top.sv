@@ -39,7 +39,7 @@ module tetris_matrix_led_top (
     localparam int unsigned PREVIEW_Y        = 4;
     localparam int unsigned PREVIEW_W        = 4;
     localparam int unsigned PREVIEW_H        = 4;
-    localparam int unsigned SCORE_X          = 10;
+    localparam int          SCORE_X          = 10;
     localparam int unsigned SCORE_Y          = 40;
     localparam int unsigned SCORE_W          = 5;
     localparam int unsigned SCORE_DIGITS     = 5;
@@ -884,10 +884,10 @@ module tetris_matrix_led_top (
 
                 end else begin
                     // ---- Normal game tick ----
-                    int   wx    ;
-                    int   wy    ;
-                    int   wrot  ;
-                    logic locked;
+                    byte unsigned wx    ;
+                    byte unsigned wy    ;
+                    int           wrot  ;
+                    logic         locked;
 
                     wx     = cur_x;
                     wy     = cur_y;

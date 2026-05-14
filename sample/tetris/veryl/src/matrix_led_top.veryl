@@ -7,23 +7,23 @@
 // ---------------------------------------------------------------------------
 
 module matrix_led_top (
-    clk         : input  clock,
+    clk         : input  '_ clock,
     user_key    : input  logic,
     user_key2   : input  logic,
     sin1        : output logic,
     sin2        : output logic,
     sin3        : output logic,
     latch       : output logic,
-    led_clk     : output logic,
+    led_clk     : output '_ clock,
     strobe_n    : output logic,
     joystick_cs2  : output logic,
     joystick_mosi2: output logic,
-    joystick_clk2 : output logic,
+    joystick_clk2 : output '_ clock,
     joystick_cs   : output logic,
     joystick_mosi : output logic,
     joystick_miso : input  logic,
     joystick_miso2: input  logic,
-    joystick_clk  : output logic,
+    joystick_clk  : output '_ clock,
     led           : output logic<8>,
 ) {
     // -----------------------------------------------------------------------
@@ -39,7 +39,7 @@ module matrix_led_top (
     const PREVIEW_Y       : u32 = 4;
     const PREVIEW_W       : u32 = 4;
     const PREVIEW_H       : u32 = 4;
-    const SCORE_X         : u32 = 10;
+    const SCORE_X         : i32 = 10;
     const SCORE_Y         : u32 = 40;
     const SCORE_W         : u32 = 5;
     const SCORE_DIGITS    : u32 = 5;
@@ -69,7 +69,7 @@ module matrix_led_top (
     // -----------------------------------------------------------------------
     // DualShock clock generation (250 kHz from 50 MHz)
     // -----------------------------------------------------------------------
-    var sclk    : logic;
+    var sclk    : '_ clock;
     var sclk_cnt: logic<8>;   // ceil(log2(200)) = 8 bits
 
     always_ff (clk) {
@@ -800,8 +800,8 @@ module matrix_led_top (
 
                 } else {
                     // ---- Normal game tick ----
-                    var wx  : i32;
-                    var wy  : i32;
+                    var wx  : u8;
+                    var wy  : u8;
                     var wrot    : i32;
                     var locked  : logic;
 

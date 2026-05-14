@@ -17,11 +17,11 @@
 // ps_rxd : Serial receive shift register
 // ---------------------------------------------------------------------------
 module ps_rxd (
-    i_clk   : input  'a clock,
-    i_rstn  : input  'a reset,
-    i_wt    : input  'a clock,
-    i_ps_rxd: input  'a logic,
-    o_rxd_dat: output 'a logic<8>,
+    i_clk   : input  '_ clock,
+    i_rstn  : input  reset,
+    i_wt    : input  '_ clock,
+    i_ps_rxd: input  logic,
+    o_rxd_dat: output logic<8>,
 ) {
     var sp: logic<8>;
 
@@ -412,7 +412,7 @@ module txd_commnd (
 // dualshock_controller : Top-level controller
 // ---------------------------------------------------------------------------
 module dualshock_controller (
-    i_clk250k : input  clock,
+    i_clk250k : input '_ clock,
     i_rstn    : input  reset,
     o_ps_clk  : output '_ clock,
     o_ps_sel  : output logic,
