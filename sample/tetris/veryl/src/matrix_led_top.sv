@@ -215,12 +215,12 @@ module tetris_matrix_led_top (
         input var logic [4-1:0] x_idx
     ) ;
         logic        [16-1:0] one_hot_row;
-        int unsigned          panel_row  ;
+        logic[3:0]          panel_row  ;
         one_hot_row = 16'h0000;
         if (ROW0_IS_LEFT != 0) begin
-            panel_row = unsigned'(int'(x_idx));
+            panel_row = unsigned'(x_idx);
         end else begin
-            panel_row = (DISPLAY_X - 1) - unsigned'(int'(x_idx));
+            panel_row = (DISPLAY_X - 1) - unsigned'(x_idx);
         end
         one_hot_row[panel_row] = 1'b1;
         return {one_hot_row, one_hot_row};
@@ -299,8 +299,8 @@ module tetris_matrix_led_top (
     function automatic logic piece_cell(
         input var logic [3-1:0] piece_id,
         input var logic [2-1:0] rot     ,
-        input var int           local_x ,
-        input var int           local_y 
+        input var byte           local_x ,
+        input var byte           local_y 
     ) ;
         logic [16-1:0] shape  ;
         int            bit_pos;
@@ -318,21 +318,21 @@ module tetris_matrix_led_top (
         input var logic [256-1:0] board_state,
         input var logic [3-1:0]   piece_id   ,
         input var logic [2-1:0]   rot        ,
-        input var int             base_x     ,
-        input var int             base_y     
+        input var byte             base_x     ,
+        input var byte             base_y     
     ) ;
         logic valid;
-        int   bx   ;
-        int   by   ;
+        byte   bx   ;
+        byte   by   ;
         valid = 1'b1;
-        for (int ly = 0; ly < 4; ly++) begin
-            for (int lx = 0; lx < 4; lx++) begin
+        for (byte ly = 0; ly < 4; ly++) begin
+            for (byte lx = 0; lx < 4; lx++) begin
                 if (piece_cell(piece_id, rot, lx, ly)) begin
                     bx = base_x + lx;
                     by = base_y + ly;
-                    if (bx < 0 || bx >= int'(FIELD_W) || by < 0 || by >= int'(FIELD_H)) begin
+                    if (bx < 0 || bx >= int'(FIELD_W) || by < 0 || by >= byte'(FIELD_H)) begin
                         valid = 1'b0;
-                    end else if (board_state[unsigned'(int'((by * int'(FIELD_W) + bx)))]) begin
+                    end else if (board_state[unsigned'(int'((by * byte'(FIELD_W) + bx)))]) begin
                         valid = 1'b0;
                     end
                 end
@@ -346,15 +346,15 @@ module tetris_matrix_led_top (
         input var logic [256-1:0] board_state,
         input var logic [3-1:0]   piece_id   ,
         input var logic [2-1:0]   rot        ,
-        input var int             base_x     ,
-        input var int             base_y     
+        input var byte             base_x     ,
+        input var byte             base_y     
     ) ;
         logic should_lock;
-        int   bx         ;
-        int   by         ;
+        byte   bx         ;
+        byte   by         ;
         should_lock = 1'b0;
-        for (int ly = 0; ly < 4; ly++) begin
-            for (int lx = 0; lx < 4; lx++) begin
+        for (byte ly = 0; ly < 4; ly++) begin
+            for (byte lx = 0; lx < 4; lx++) begin
                 if (piece_cell(piece_id, rot, lx, ly) && !piece_cell(piece_id, rot, lx, ly + 1)) begin
                     bx = base_x + lx;
                     by = base_y + ly;
@@ -371,13 +371,13 @@ module tetris_matrix_led_top (
 
     // Check if the current (active) piece occupies a given board cell
     function automatic logic current_piece_cell(
-        input var int bx,
-        input var int by
+        input var byte bx,
+        input var byte by
     ) ;
         logic found;
         found = 1'b0;
-        for (int ly = 0; ly < 4; ly++) begin
-            for (int lx = 0; lx < 4; lx++) begin
+        for (byte ly = 0; ly < 4; ly++) begin
+            for (byte lx = 0; lx < 4; lx++) begin
                 if (piece_cell(cur_piece, cur_rot, lx, ly) && cur_x + lx == bx && cur_y + ly == by) begin
                     found = 1'b1;
                 end
@@ -570,25 +570,25 @@ module tetris_matrix_led_top (
         input var logic [4-1:0] screen_x
     ) ;
         logic [2-1:0] gray      ;
-        int           board_y   ;
-        int           preview_y ;
-        int           digit_slot;
-        int           local_x   ;
-        int           local_y   ;
+        byte           board_y   ;
+        byte           preview_y ;
+        byte           digit_slot;
+        byte           local_x   ;
+        byte           local_y   ;
 
         gray = 2'd0;
 
-        if (screen_x < FIELD_W && screen_y < int'(FIELD_H) * int'(CELL_H)) begin
-            board_y = screen_y / int'(CELL_H);
-            if (board_bits[unsigned'(int'((board_y * int'(FIELD_W) + int'(screen_x))))]) begin
+        if (screen_x < FIELD_W && screen_y < byte'(FIELD_H) * byte'(CELL_H)) begin
+            board_y = screen_y / byte'(CELL_H);
+            if (board_bits[unsigned'(int'((board_y * byte'(FIELD_W) + byte'(screen_x))))]) begin
                 gray = 2'd2;
             end
-            if (current_piece_cell(int'(screen_x), board_y) && !game_over) begin
+            if (current_piece_cell(byte'(screen_x), board_y) && !game_over) begin
                 gray = 2'd3;
             end
-        end else if (screen_x >= int'(PREVIEW_X) && screen_x < int'(PREVIEW_X) + int'(PREVIEW_W) && screen_y >= int'(PREVIEW_Y) && screen_y < int'(PREVIEW_Y) + int'(PREVIEW_H)) begin
-            local_x   = int'(screen_x) - int'(PREVIEW_X);
-            preview_y = (screen_y - int'(PREVIEW_Y)) / int'(CELL_H);
+        end else if (screen_x >= byte'(PREVIEW_X) && screen_x < byte'(PREVIEW_X) + byte'(PREVIEW_W) && screen_y >= byte'(PREVIEW_Y) && screen_y < byte'(PREVIEW_Y) + byte'(PREVIEW_H)) begin
+            local_x   = byte'(screen_x) - byte'(PREVIEW_X);
+            preview_y = (screen_y - byte'(PREVIEW_Y)) / byte'(CELL_H);
             if (piece_cell(next_piece, 2'd0, local_x, preview_y)) begin
                 gray = 2'd3;
             end
@@ -830,11 +830,11 @@ module tetris_matrix_led_top (
                 if (line_clear_pending) begin
                     // ---- Compact board: remove full rows ----
                     logic [256-1:0] compact;
-                    int             clr_cnt;
-                    int             wr_row ;
-                    int             rd_row ;
+                    shortint             clr_cnt;
+                    shortint             wr_row ;
+                    shortint             rd_row ;
                     logic           full   ;
-                    int             ns     ;
+                    logic[16:0]          ns     ;
 
                     compact = 256'd0;
                     clr_cnt = 0;
@@ -860,7 +860,7 @@ module tetris_matrix_led_top (
 
                     board_bits <= compact;
 
-                    ns          =  int'(score_value) + score_increment(clr_cnt);
+                    ns          =  shortint'(score_value) + score_increment(clr_cnt);
                     if (ns > 99999) begin
                         ns          =  99999;
                     end
@@ -878,15 +878,15 @@ module tetris_matrix_led_top (
                     cur_y              <= SPAWN_Y;
                     line_clear_pending <= 1'b0;
 
-                    if (!position_valid(compact, next_piece, 2'd0, int'(SPAWN_X), int'(SPAWN_Y))) begin
+                    if (!position_valid(compact, next_piece, 2'd0, byte'(SPAWN_X), byte'(SPAWN_Y))) begin
                         game_over <= 1'b1;
                     end
 
                 end else begin
                     // ---- Normal game tick ----
-                    int   wx    ;
-                    int   wy    ;
-                    int   wrot  ;
+                    byte   wx    ;
+                    byte   wy    ;
+                    byte   wrot  ;
                     logic locked;
 
                     wx     = cur_x;
@@ -967,7 +967,7 @@ module tetris_matrix_led_top (
                             cur_rot    <= 2'd0;
                             cur_x      <= SPAWN_X;
                             cur_y      <= SPAWN_Y;
-                            if (!position_valid(tmp, next_piece, 2'd0, int'(SPAWN_X), int'(SPAWN_Y))) begin
+                            if (!position_valid(tmp, next_piece, 2'd0, byte'(SPAWN_X), byte'(SPAWN_Y))) begin
                                 game_over <= 1'b1;
                             end
                         end

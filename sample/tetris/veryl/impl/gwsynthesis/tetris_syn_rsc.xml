@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Module name="tetris_matrix_led_top" Register="496" Alu="443" Lut="12889" T_Register="858(496)" T_Alu="470(443)" T_Lut="13428(12889)" T_Bsram="4(0)">
- <SubModule name="controller" Register="7" Lut="5" T_Register="68(7)" T_Alu="11(0)" T_Lut="98(5)">
+<Module name="tetris_matrix_led_top" Register="495" Alu="441" Lut="13575" T_Register="857(495)" T_Alu="468(441)" T_Lut="14112(13575)" T_Bsram="4(0)">
+ <SubModule name="controller" Register="7" Lut="6" T_Register="68(7)" T_Alu="11(0)" T_Lut="95(6)">
   <SubModule name="pls" Register="22" Alu="11" Lut="28" T_Register="22(22)" T_Alu="11(11)" T_Lut="28(28)"/>
-  <SubModule name="cmd" Register="14" Lut="54" T_Register="14(14)" T_Lut="54(54)"/>
+  <SubModule name="cmd" Register="14" Lut="50" T_Register="14(14)" T_Lut="50(50)"/>
   <SubModule name="txd" Register="9" Lut="11" T_Register="9(9)" T_Lut="11(11)"/>
   <SubModule name="rxd" Register="16" T_Register="16(16)"/>
  </SubModule>
- <SubModule name="gw_gao_inst_0" Register="294" Alu="16" Lut="441" Bsram="4" T_Register="294(294)" T_Alu="16(16)" T_Lut="441(441)" T_Bsram="4(4)"/>
+ <SubModule name="gw_gao_inst_0" Register="294" Alu="16" Lut="442" Bsram="4" T_Register="294(294)" T_Alu="16(16)" T_Lut="442(442)" T_Bsram="4(4)"/>
 </Module>
