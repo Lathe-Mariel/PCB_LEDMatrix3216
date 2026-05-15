@@ -130,7 +130,7 @@ module tetris_matrix_led_top (
     always_comb key_down  = ~joy_rx[0][6];
     always_comb btn_a     = ~joy_rx[1][4];
     always_comb btn_b     = ~joy_rx[1][7];
-    always_comb reset_key = ~joy_rx[0][3];
+    always_comb reset_key = USER_KEY;//~joy_rx[0][3];
 
     always_comb led[0]   = ~joy_rx[0][5];
     always_comb led[1]   = ~joy_rx[0][7];

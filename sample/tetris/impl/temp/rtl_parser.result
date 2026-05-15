@@ -1,57 +1,57 @@
 [
  {
-  "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+  "InstFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
   "InstLine" : 191,
   "InstName" : "txd_commnd_EZ",
-  "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+  "ModuleFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
   "ModuleLine" : 191,
   "ModuleName" : "txd_commnd_EZ"
  },
  {
-  "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
+  "InstFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
   "InstLine" : 1,
   "InstName" : "matrix_led_top",
-  "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
+  "ModuleFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
   "ModuleLine" : 1,
   "ModuleName" : "matrix_led_top",
   "SubInsts" : [
    {
-    "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
+    "InstFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/matrix_led_top.v",
     "InstLine" : 66,
     "InstName" : "controller",
-    "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+    "ModuleFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
     "ModuleLine" : 36,
     "ModuleName" : "dualshock_controller",
     "SubInsts" : [
      {
-      "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+      "InstFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
       "InstLine" : 86,
       "InstName" : "pls",
-      "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+      "ModuleFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
       "ModuleLine" : 477,
       "ModuleName" : "ps_pls_gan"
      },
      {
-      "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+      "InstFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
       "InstLine" : 107,
       "InstName" : "cmd",
-      "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+      "ModuleFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
       "ModuleLine" : 245,
       "ModuleName" : "txd_commnd"
      },
      {
-      "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+      "InstFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
       "InstLine" : 140,
       "InstName" : "txd",
-      "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+      "ModuleFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
       "ModuleLine" : 628,
       "ModuleName" : "ps_txd"
      },
      {
-      "InstFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+      "InstFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
       "InstLine" : 151,
       "InstName" : "rxd",
-      "ModuleFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
+      "ModuleFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/src/dualshock_controller.v",
       "ModuleLine" : 603,
       "ModuleName" : "ps_rxd"
      }

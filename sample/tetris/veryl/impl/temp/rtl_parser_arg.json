@@ -2,11 +2,11 @@
  "Device" : "GW5A-25A",
  "Files" : [
   {
-   "Path" : "H:/git/PCB_LEDMatrix3216/sample/tetris/veryl/src/dualshock_controller.sv",
+   "Path" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/veryl/src/dualshock_controller.sv",
    "Type" : "verilog"
   },
   {
-   "Path" : "H:/git/PCB_LEDMatrix3216/sample/tetris/veryl/src/matrix_led_top.sv",
+   "Path" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/veryl/src/matrix_led_top.sv",
    "Type" : "verilog"
   }
  ],
@@ -14,7 +14,7 @@
 
  ],
  "LoopLimit" : 2000,
- "ResultFile" : "H:/git/PCB_LEDMatrix3216/sample/tetris/veryl/impl/temp/rtl_parser.result",
+ "ResultFile" : "C:/Git/PCB_LEDMatrix3216/sample/tetris/veryl/impl/temp/rtl_parser.result",
  "Top" : "tetris_matrix_led_top",
  "VerilogStd" : "sysv",
  "VhdlStd" : "vhdl_93"
